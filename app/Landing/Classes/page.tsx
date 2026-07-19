@@ -4,6 +4,9 @@ import { useState } from "react";
 import Navbar from "../../UI/Navbar";
 import { useCoachApp } from "../../lib/coach-store";
 
+const levelOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper Intermediate", "Advanced"];
+
+
 export default function ClassesPage() {
   const { classes, students, addClass } = useCoachApp();
   const [name, setName] = useState("");
@@ -66,13 +69,17 @@ export default function ClassesPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block space-y-2">
                   <span className="text-sm font-medium text-slate-700">Level</span>
-                  <input
-                    type="text"
+      <select
                     value={level}
                     onChange={(event) => setLevel(event.target.value)}
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-teal-600 focus:bg-white"
-                    placeholder="Beginner"
-                  />
+                  >
+                    {levelOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </label>
 
                 <label className="block space-y-2">
