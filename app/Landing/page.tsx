@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Navbar from "../UI/Navbar";
 import { useCoachApp } from "@/app/lib/coach-store";
-import type { LibraryItem } from "@/app/lib/coach-data";
+import type { LibraryItem, SkillLibraryItem } from "@/app/lib/coach-data";
 
 const quickLinks = [
   {
@@ -47,7 +47,7 @@ export default function LandingPage() {
   } = useCoachApp();
 
   const selectedConditioning = conditioningExercises.filter((item: LibraryItem) => lessonPlan.conditioningIds.includes(item.id));
-  const selectedSkills = skillExercises.filter((item: LibraryItem) => lessonPlan.skillIds.includes(item.id));
+  const selectedSkills = skillExercises.filter((item: SkillLibraryItem) => lessonPlan.skillIds.includes(item.id));
   const recentStudents = [...students].slice(0, 3);
   const recentClasses = [...classes].slice(0, 3);
   const boardStats = [
@@ -139,7 +139,7 @@ export default function LandingPage() {
                   <p className="text-xs uppercase tracking-[0.22em] text-slate-600 dark:text-slate-300">Skills</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {selectedSkills.length ? (
-                      selectedSkills.map((item: LibraryItem) => (
+                      selectedSkills.map((item: SkillLibraryItem) => (
                         <span key={item.id} className="rounded-full bg-orange-100 px-3 py-1 text-xs text-orange-700 dark:bg-orange-300/20 dark:text-orange-100">
                           {item.title}
                         </span>

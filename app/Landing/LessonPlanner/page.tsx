@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import Navbar from "../../UI/Navbar";
 import { useCoachApp } from "@/app/lib/coach-store";
-import type { AssignedLessonPlan, CoachClassData, LibraryItem, StudentProfileData } from "@/app/lib/coach-data";
+import type { AssignedLessonPlan, CoachClassData, LibraryItem, SkillLibraryItem, StudentProfileData } from "@/app/lib/coach-data";
 
 export default function LessonPlannerPage() {
 	const {
@@ -257,7 +257,7 @@ export default function LessonPlannerPage() {
 							<div className="space-y-2">
 								<p className="text-sm font-medium text-slate-700">Skill blocks for whole class</p>
 								<div className="grid max-h-128 gap-2 overflow-y-auto pr-1">
-										{skillExercises.map((item: LibraryItem) => (
+										{skillExercises.map((item: SkillLibraryItem) => (
 										<label
 											key={item.id}
 											className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
@@ -297,7 +297,7 @@ export default function LessonPlannerPage() {
 											<div key={student.id} className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
 												<p className="text-sm font-semibold text-slate-800">{student.name}</p>
 												<div className="grid max-h-88 gap-2 overflow-y-auto pr-1">
-															{skillExercises.map((item: LibraryItem) => (
+															{skillExercises.map((item: SkillLibraryItem) => (
 														<label
 															key={`${student.id}-${item.id}`}
 															className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
