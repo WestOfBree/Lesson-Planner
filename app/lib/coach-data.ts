@@ -40,8 +40,10 @@ export interface AssignedLessonPlan {
   notes: string;
   studentIds: string[];
   conditioningIds: string[];
+  conditioningReps: Record<string, number>;
   skillIds: string[];
   perStudentSkillIds: Record<string, string[]>;
+  outcomeNotes: string;
   createdAt: string;
 }
 
@@ -107,8 +109,13 @@ export interface NewLessonPlanInput {
   notes: string;
   studentIds: string[];
   conditioningIds: string[];
+  conditioningReps: Record<string, number>;
   skillIds: string[];
   perStudentSkillIds: Record<string, string[]>;
+}
+
+export interface UpdateLessonPlanInput extends NewLessonPlanInput {
+  outcomeNotes: string;
 }
 
 export const slugify = (value: string) =>

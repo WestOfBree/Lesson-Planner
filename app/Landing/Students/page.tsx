@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Navbar from "../../UI/Navbar";
 import StudentCard from "../../UI/StudentCard";
-import { useCoachApp } from "../../lib/coach-store";
+import { useCoachApp } from "@/app/lib/coach-store";
+import type { CoachClassData, StudentProfileData } from "@/app/lib/coach-data";
 
 const splitValues = (value: string) =>
   value
@@ -14,16 +15,20 @@ const splitValues = (value: string) =>
 const levelOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper Intermediate", "Advanced"];
 
 export default function StudentsPage() {
-  const { classes, students, addStudent, updateStudentProgress } = useCoachApp();
+  const { classes, students, skillExercises, addStudent, updateStudentProgress } = useCoachApp();
   const [name, setName] = useState("");
   const [level, setLevel] = useState("Beginner");
   const [focus, setFocus] = useState("");
   const [notes, setNotes] = useState("");
   const [goals, setGoals] = useState("");
-  const [skillsKnown, setSkillsKnown] = useState("");
+  const [skillsKnown, setSkillsKnown] = useState<string[]>([]);
   const [struggles, setStruggles] = useState("");
   const [progress, setProgress] = useState(30);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const availableSkillTitles = useMemo(
+    () => Array.from(new Set(skillExercises.map((item) => item.title.trim()).filter(Boolean))),
+    [skillExercises],
+  );
 
   return (
     <div className="min-h-screen px-4 py-4 sm:px-6 lg:px-8">
@@ -50,7 +55,7 @@ export default function StudentsPage() {
                 notes,
                 classIds: selectedClassIds,
                 goals: splitValues(goals),
-                skillsKnown: splitValues(skillsKnown),
+                skillsKnown,
                 struggles: splitValues(struggles),
                 progress,
               });
@@ -59,7 +64,7 @@ export default function StudentsPage() {
               setFocus("");
               setNotes("");
               setGoals("");
-              setSkillsKnown("");
+              setSkillsKnown([]);
               setStruggles("");
               setProgress(30);
               setSelectedClassIds([]);
@@ -119,13 +124,34 @@ export default function StudentsPage() {
 
               <label className="block space-y-2">
                 <span className="text-sm font-medium text-slate-700">Skills known</span>
-                <input
-                  type="text"
-                  value={skillsKnown}
-                  onChange={(event) => setSkillsKnown(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
-                  placeholder="Hip key, foot locks, basic climb"
-                />
+                {availableSkillTitles.length ? (
+                  <div className="grid gap-2">
+                    {availableSkillTitles.map((skillTitle) => (
+                      <label
+                        key={skillTitle}
+                        className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+                      >
+                        <span>{skillTitle}</span>
+                        <input
+                          type="checkbox"
+                          checked={skillsKnown.includes(skillTitle)}
+                          onChange={(event) => {
+                            setSkillsKnown((current) =>
+                              event.target.checked
+                                ? [...current, skillTitle]
+                                : current.filter((entry) => entry !== skillTitle),
+                            );
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-700"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                    Add skills in the Skills Library first, then select them here.
+                  </p>
+                )}
               </label>
 
               <label className="block space-y-2">
@@ -169,7 +195,7 @@ export default function StudentsPage() {
                 <span className="text-sm font-medium text-slate-700">Assign to classes</span>
                 <div className="grid gap-2">
                   {classes.length ? (
-                    classes.map((classItem) => (
+                    classes.map((classItem: CoachClassData) => (
                       <label
                         key={classItem.id}
                         className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
@@ -199,7 +225,7 @@ export default function StudentsPage() {
 
               <button
                 type="submit"
-                className="w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800"
+                className="w-full cursor-pointer rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800"
               >
                 Save student profile
               </button>
@@ -208,7 +234,7 @@ export default function StudentsPage() {
 
           <section className="space-y-4">
             {students.length ? (
-              students.map((student) => (
+                    students.map((student: StudentProfileData) => (
                 <StudentCard
                   key={student.id}
                   student={student}

@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import Navbar from "../../../UI/Navbar";
 import { useCoachApp } from "../../../lib/coach-store";
+import type { LibraryItem } from "../../../lib/coach-data";
 
 const splitValues = (value: string) =>
   value
@@ -16,43 +17,39 @@ const difficultyOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper
 
 export default function SkillDetailPage() {
   const params = useParams<{ skillId: string }>();
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const { skillExercises, lessonPlan, toggleLessonPlanItem, updateSkillExercise } = useCoachApp();
-  const skill = skillExercises.find((item) => item.slug === params.skillId || item.id === params.skillId);
+  const { skillExercises, lessonPlan, toggleLessonPlanItem, updateSkillExercise, deleteSkillExercise } = useCoachApp();
+  const skill = useMemo(
+    () => skillExercises.find((item: LibraryItem) => item.slug === params.skillId || item.id === params.skillId),
+    [params.skillId, skillExercises],
+  );
+  const formDefaults = useMemo(
+    () => ({
+      title: skill?.title ?? "",
+      description: skill?.description ?? "",
+      difficulty: skill?.difficulty ?? "Beginner",
+      duration: skill?.duration ?? "",
+      equipment: skill?.equipment?.join(", ") ?? "",
+      coachingCues: skill?.coachingCues?.join(", ") ?? "",
+      progressions: skill?.progressions?.join(", ") ?? "",
+      regressions: skill?.regressions?.join(", ") ?? "",
+      lessonUse: skill?.lessonUse ?? "",
+    }),
+    [skill],
+  );
 
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(searchParams.get("edit") === "1");
   const [statusMessage, setStatusMessage] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [difficulty, setDifficulty] = useState("Beginner");
-  const [duration, setDuration] = useState("");
-  const [equipment, setEquipment] = useState("");
-  const [coachingCues, setCoachingCues] = useState("");
-  const [progressions, setProgressions] = useState("");
-  const [regressions, setRegressions] = useState("");
-  const [lessonUse, setLessonUse] = useState("");
-
-  useEffect(() => {
-    if (!skill) {
-      return;
-    }
-
-    setTitle(skill.title);
-    setDescription(skill.description || "");
-    setDifficulty(skill.difficulty || "Beginner");
-    setDuration(skill.duration || "");
-    setEquipment(skill.equipment.join(", "));
-    setCoachingCues(skill.coachingCues.join(", "));
-    setProgressions(skill.progressions.join(", "));
-    setRegressions(skill.regressions.join(", "));
-    setLessonUse(skill.lessonUse || "");
-  }, [skill]);
-
-  useEffect(() => {
-    if (searchParams.get("edit") === "1") {
-      setIsEditing(true);
-    }
-  }, [searchParams]);
+  const [title, setTitle] = useState(formDefaults.title);
+  const [description, setDescription] = useState(formDefaults.description);
+  const [difficulty, setDifficulty] = useState(formDefaults.difficulty);
+  const [duration, setDuration] = useState(formDefaults.duration);
+  const [equipment, setEquipment] = useState(formDefaults.equipment);
+  const [coachingCues, setCoachingCues] = useState(formDefaults.coachingCues);
+  const [progressions, setProgressions] = useState(formDefaults.progressions);
+  const [regressions, setRegressions] = useState(formDefaults.regressions);
+  const [lessonUse, setLessonUse] = useState(formDefaults.lessonUse);
 
   if (!skill) {
     return (
@@ -157,6 +154,19 @@ export default function SkillDetailPage() {
             }}
           >
             {isEditing ? "Cancel edit" : "Edit skill"}
+          </button>
+
+          <button
+            type="button"
+            className="w-full cursor-pointer rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 font-semibold text-rose-700 transition hover:bg-rose-100"
+            onClick={() => {
+              if (window.confirm(`Delete ${skill.title}?`)) {
+                deleteSkillExercise(skill.id);
+                router.push("/Landing/SkillsLibrary");
+              }
+            }}
+          >
+            Delete skill
           </button>
 
           {statusMessage ? (

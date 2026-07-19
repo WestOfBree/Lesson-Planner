@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import Navbar from "../UI/Navbar";
-import { useCoachApp } from "../lib/coach-store";
+import { useCoachApp } from "@/app/lib/coach-store";
+import type { LibraryItem } from "@/app/lib/coach-data";
 
 const quickLinks = [
   {
@@ -33,10 +34,20 @@ const quickLinks = [
 ];
 
 export default function LandingPage() {
-  const { currentCoach, classes, students, conditioningExercises, skillExercises, lessonPlan, clearLessonPlan } = useCoachApp();
+  const {
+    currentCoach,
+    isHydrating,
+    hydrationError,
+    classes,
+    students,
+    conditioningExercises,
+    skillExercises,
+    lessonPlan,
+    clearLessonPlan,
+  } = useCoachApp();
 
-  const selectedConditioning = conditioningExercises.filter((item) => lessonPlan.conditioningIds.includes(item.id));
-  const selectedSkills = skillExercises.filter((item) => lessonPlan.skillIds.includes(item.id));
+  const selectedConditioning = conditioningExercises.filter((item: LibraryItem) => lessonPlan.conditioningIds.includes(item.id));
+  const selectedSkills = skillExercises.filter((item: LibraryItem) => lessonPlan.skillIds.includes(item.id));
   const recentStudents = [...students].slice(0, 3);
   const recentClasses = [...classes].slice(0, 3);
   const boardStats = [
@@ -50,7 +61,29 @@ export default function LandingPage() {
     <div className="min-h-screen px-4 py-4 sm:px-6 lg:px-8">
       <Navbar />
 
-      <main className="mx-auto mt-6 grid w-full max-w-7xl gap-6 lg:mt-8">
+      {isHydrating ? (
+        <main className="mx-auto mt-6 w-full max-w-7xl lg:mt-8">
+          <section className="rounded-[1.75rem] border border-cyan-200 bg-cyan-50/80 p-6 text-cyan-900 shadow-[0_16px_40px_rgba(14,116,144,0.12)] sm:p-8">
+            <p className="text-xs uppercase tracking-[0.32em] text-cyan-700">Syncing workspace</p>
+            <h2 className="mt-3 text-2xl font-semibold">Loading your Firestore coaching data...</h2>
+            <p className="mt-2 text-sm leading-6 text-cyan-800">
+              Hang tight while classes, students, lesson plans, and libraries are pulled from the cloud.
+            </p>
+          </section>
+        </main>
+      ) : null}
+
+      {hydrationError ? (
+        <main className="mx-auto mt-6 w-full max-w-7xl lg:mt-8">
+          <section className="rounded-[1.75rem] border border-rose-200 bg-rose-50/90 p-6 text-rose-900 shadow-[0_16px_40px_rgba(244,63,94,0.12)] sm:p-8">
+            <p className="text-xs uppercase tracking-[0.32em] text-rose-700">Sync issue</p>
+            <h2 className="mt-3 text-2xl font-semibold">Unable to fully load Firestore data</h2>
+            <p className="mt-2 text-sm leading-6 text-rose-800">{hydrationError}</p>
+          </section>
+        </main>
+      ) : null}
+
+      <main className={`mx-auto mt-6 grid w-full max-w-7xl gap-6 lg:mt-8 ${isHydrating ? "pointer-events-none opacity-40" : ""}`}>
         <section className="landing-control-deck overflow-hidden rounded-4xl border border-indigo-200/70 bg-white/92 text-slate-900 shadow-[0_24px_70px_rgba(15,23,42,0.18)] dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_24px_70px_rgba(15,23,42,0.34)]">
           <div className="grid gap-8 p-6 sm:p-8 xl:grid-cols-[1.5fr_1fr]">
             <div>
@@ -91,7 +124,7 @@ export default function LandingPage() {
                   <p className="text-xs uppercase tracking-[0.22em] text-slate-600 dark:text-slate-300">Conditioning</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {selectedConditioning.length ? (
-                      selectedConditioning.map((item) => (
+                      selectedConditioning.map((item: LibraryItem) => (
                         <span key={item.id} className="rounded-full bg-cyan-100 px-3 py-1 text-xs text-cyan-700 dark:bg-cyan-300/20 dark:text-cyan-100">
                           {item.title}
                         </span>
@@ -106,7 +139,7 @@ export default function LandingPage() {
                   <p className="text-xs uppercase tracking-[0.22em] text-slate-600 dark:text-slate-300">Skills</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {selectedSkills.length ? (
-                      selectedSkills.map((item) => (
+                      selectedSkills.map((item: LibraryItem) => (
                         <span key={item.id} className="rounded-full bg-orange-100 px-3 py-1 text-xs text-orange-700 dark:bg-orange-300/20 dark:text-orange-100">
                           {item.title}
                         </span>

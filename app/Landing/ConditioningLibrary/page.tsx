@@ -3,7 +3,8 @@
 import { useState } from "react";
 import ExerciseCard from "../../UI/ExerciseCard";
 import Navbar from "../../UI/Navbar";
-import { useCoachApp } from "../../lib/coach-store";
+import { useCoachApp } from "@/app/lib/coach-store";
+import type { LibraryItem } from "@/app/lib/coach-data";
 
 const splitValues = (value: string) =>
   value
@@ -195,7 +196,7 @@ export default function ConditioningLibraryPage() {
           </div>
 
           <section className={`grid gap-4 ${showCreateExercise ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
-            {conditioningExercises.map((item) => (
+            {conditioningExercises.map((item: LibraryItem) => (
               <ExerciseCard
                 key={item.id}
                 item={item}

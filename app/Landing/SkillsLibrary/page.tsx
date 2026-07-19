@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Navbar from "../../UI/Navbar";
 import SkillCard from "../../UI/SkillCard";
-import { useCoachApp } from "../../lib/coach-store";
+import { useCoachApp } from "@/app/lib/coach-store";
+import type { LibraryItem } from "@/app/lib/coach-data";
 
 const splitValues = (value: string) =>
   value
@@ -15,14 +16,11 @@ const difficultyOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper
 
 export default function SkillsLibraryPage() {
   const { skillExercises, addSkillExercise, lessonPlan, toggleLessonPlanItem } = useCoachApp();
+  const [showCreateSkill, setShowCreateSkill] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [difficulty, setDifficulty] = useState("Beginner");
-  const [duration, setDuration] = useState("");
-  const [equipment, setEquipment] = useState("");
   const [coachingCues, setCoachingCues] = useState("");
-  const [progressions, setProgressions] = useState("");
-  const [regressions, setRegressions] = useState("");
   const [lessonUse, setLessonUse] = useState("");
 
   return (
@@ -36,47 +34,54 @@ export default function SkillsLibraryPage() {
           <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
             Keep your progressions organized with quick-view cards, detailed drill pages, and custom additions when you want to expand the library.
           </p>
+                   <button
+            type="button"
+            aria-expanded={showCreateSkill}
+            className="mt-5 cursor-pointer rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            onClick={() => setShowCreateSkill((current) => !current)}
+          >
+            {showCreateSkill ? "Hide create skill" : "Create new skill"}
+          </button>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[1fr_1.35fr]">
-          <form
-            className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.08)] sm:p-8"
-            onSubmit={(event) => {
-              event.preventDefault();
-              addSkillExercise({
-                title,
-                description,
-                difficulty,
-                duration,
-                equipment: splitValues(equipment),
-                coachingCues: splitValues(coachingCues),
-                progressions: splitValues(progressions),
-                regressions: splitValues(regressions),
-                lessonUse,
-              });
-              setTitle("");
-              setDescription("");
-              setDifficulty("Beginner");
-              setDuration("");
-              setEquipment("");
-              setCoachingCues("");
-              setProgressions("");
-              setRegressions("");
-              setLessonUse("");
-            }}
+        <section className={`grid gap-6 ${showCreateSkill ? "xl:grid-cols-[1fr_1.35fr]" : "grid-cols-1"}`}>
+          <div
+            className={`overflow-hidden transition-all duration-300 ${showCreateSkill ? "max-h-[2200px] opacity-100" : "max-h-0 opacity-0"}`}
           >
-            <div className="space-y-4">
-              <label className="block space-y-2">
-                <span className="text-sm font-medium text-slate-700">Skill title</span>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
-                  placeholder="Straddle beat"
-                  required
-                />
-              </label>
+            <form
+              className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.08)] sm:p-8"
+              onSubmit={(event) => {
+                event.preventDefault();
+                addSkillExercise({
+                  title,
+                  description,
+                  difficulty,
+                  duration: "",
+                  equipment: [],
+                  coachingCues: splitValues(coachingCues),
+                  progressions: [],
+                  regressions: [],
+                  lessonUse,
+                });
+                setTitle("");
+                setDescription("");
+                setDifficulty("Beginner");
+                setCoachingCues("");
+                setLessonUse("");
+              }}
+            >
+              <div className="space-y-4">
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Skill title</span>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
+                    placeholder="Straddle beat"
+                    required
+                  />
+                </label>
 
               <label className="block space-y-2">
                 <span className="text-sm font-medium text-slate-700">Description</span>
@@ -106,28 +111,7 @@ export default function SkillsLibraryPage() {
                   </select>
                 </label>
 
-                <label className="block space-y-2">
-                  <span className="text-sm font-medium text-slate-700">Duration</span>
-                  <input
-                    type="text"
-                    value={duration}
-                    onChange={(event) => setDuration(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-teal-600 focus:bg-white"
-                    placeholder="5 focused attempts"
-                  />
-                </label>
               </div>
-
-              <label className="block space-y-2">
-                <span className="text-sm font-medium text-slate-700">Equipment</span>
-                <input
-                  type="text"
-                  value={equipment}
-                  onChange={(event) => setEquipment(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
-                  placeholder="Silks, mat"
-                />
-              </label>
 
               <label className="block space-y-2">
                 <span className="text-sm font-medium text-slate-700">Coaching cues</span>
@@ -140,29 +124,6 @@ export default function SkillsLibraryPage() {
                 />
               </label>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block space-y-2">
-                  <span className="text-sm font-medium text-slate-700">Progressions</span>
-                  <input
-                    type="text"
-                    value={progressions}
-                    onChange={(event) => setProgressions(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
-                    placeholder="Assisted version, loaded version"
-                  />
-                </label>
-
-                <label className="block space-y-2">
-                  <span className="text-sm font-medium text-slate-700">Regressions</span>
-                  <input
-                    type="text"
-                    value={regressions}
-                    onChange={(event) => setRegressions(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
-                    placeholder="Floor drill, spot version"
-                  />
-                </label>
-              </div>
 
               <label className="block space-y-2">
                 <span className="text-sm font-medium text-slate-700">Lesson use</span>
@@ -174,17 +135,18 @@ export default function SkillsLibraryPage() {
                 />
               </label>
 
-              <button
-                type="submit"
-                className="w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800"
-              >
-                Add skill exercise
-              </button>
-            </div>
-          </form>
+                <button
+                  type="submit"
+                  className="cursor-pointer w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800"
+                >
+                  Add skill exercise
+                </button>
+              </div>
+            </form>
+          </div>
 
-          <section className="grid gap-4 sm:grid-cols-2">
-            {skillExercises.map((item) => (
+          <section className={`grid gap-4 ${showCreateSkill ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
+            {skillExercises.map((item: LibraryItem) => (
               <SkillCard
                 key={item.id}
                 item={item}

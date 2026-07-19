@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import Navbar from "../../../UI/Navbar";
 import { useCoachApp } from "../../../lib/coach-store";
 
@@ -14,45 +14,29 @@ const splitValues = (value: string) =>
 
 const difficultyOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper Intermediate", "Advanced"];
 
+interface ExerciseFormState {
+  exerciseId: string;
+  title: string;
+  description: string;
+  difficulty: string;
+  duration: string;
+  equipment: string;
+  coachingCues: string;
+  progressions: string;
+  regressions: string;
+  lessonUse: string;
+}
+
 export default function ConditioningDetailPage() {
   const params = useParams<{ exerciseId: string }>();
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const { conditioningExercises, lessonPlan, toggleLessonPlanItem, updateConditioningExercise } = useCoachApp();
+  const { conditioningExercises, lessonPlan, toggleLessonPlanItem, updateConditioningExercise, deleteConditioningExercise } = useCoachApp();
   const exercise = conditioningExercises.find((item) => item.slug === params.exerciseId || item.id === params.exerciseId);
 
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(searchParams.get("edit") === "1");
   const [statusMessage, setStatusMessage] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [difficulty, setDifficulty] = useState("Beginner");
-  const [duration, setDuration] = useState("");
-  const [equipment, setEquipment] = useState("");
-  const [coachingCues, setCoachingCues] = useState("");
-  const [progressions, setProgressions] = useState("");
-  const [regressions, setRegressions] = useState("");
-  const [lessonUse, setLessonUse] = useState("");
-
-  useEffect(() => {
-    if (!exercise) {
-      return;
-    }
-
-    setTitle(exercise.title);
-    setDescription(exercise.description || "");
-    setDifficulty(exercise.difficulty || "Beginner");
-    setDuration(exercise.duration || "");
-    setEquipment(exercise.equipment.join(", "));
-    setCoachingCues(exercise.coachingCues.join(", "));
-    setProgressions(exercise.progressions.join(", "));
-    setRegressions(exercise.regressions.join(", "));
-    setLessonUse(exercise.lessonUse || "");
-  }, [exercise]);
-
-  useEffect(() => {
-    if (searchParams.get("edit") === "1") {
-      setIsEditing(true);
-    }
-  }, [searchParams]);
+  const [draft, setDraft] = useState<ExerciseFormState | null>(null);
 
   if (!exercise) {
     return (
@@ -71,6 +55,25 @@ export default function ConditioningDetailPage() {
   }
 
   const selected = lessonPlan.conditioningIds.includes(exercise.id);
+  const baseFormState: ExerciseFormState = {
+    exerciseId: exercise.id,
+    title: exercise.title,
+    description: exercise.description || "",
+    difficulty: exercise.difficulty || "Beginner",
+    duration: exercise.duration || "",
+    equipment: exercise.equipment.join(", "),
+    coachingCues: exercise.coachingCues.join(", "),
+    progressions: exercise.progressions.join(", "),
+    regressions: exercise.regressions.join(", "),
+    lessonUse: exercise.lessonUse || "",
+  };
+  const formState = draft?.exerciseId === exercise.id ? draft : baseFormState;
+  const updateFormState = (updater: (current: ExerciseFormState) => ExerciseFormState) => {
+    setDraft((current) => {
+      const activeState = current?.exerciseId === exercise.id ? current : baseFormState;
+      return updater(activeState);
+    });
+  };
 
   return (
     <div className="min-h-screen px-4 py-4 sm:px-6 lg:px-8">
@@ -159,6 +162,19 @@ export default function ConditioningDetailPage() {
             {isEditing ? "Cancel edit" : "Edit exercise"}
           </button>
 
+          <button
+            type="button"
+            className="w-full cursor-pointer rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 font-semibold text-rose-700 transition hover:bg-rose-100"
+            onClick={() => {
+              if (window.confirm(`Delete ${exercise.title}?`)) {
+                deleteConditioningExercise(exercise.id);
+                router.push("/Landing/ConditioningLibrary");
+              }
+            }}
+          >
+            Delete exercise
+          </button>
+
           {statusMessage ? (
             <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{statusMessage}</p>
           ) : null}
@@ -169,15 +185,15 @@ export default function ConditioningDetailPage() {
               onSubmit={(event) => {
                 event.preventDefault();
                 updateConditioningExercise(exercise.id, {
-                  title,
-                  description,
-                  difficulty,
-                  duration,
-                  equipment: splitValues(equipment),
-                  coachingCues: splitValues(coachingCues),
-                  progressions: splitValues(progressions),
-                  regressions: splitValues(regressions),
-                  lessonUse,
+                  title: formState.title,
+                  description: formState.description,
+                  difficulty: formState.difficulty,
+                  duration: formState.duration,
+                  equipment: splitValues(formState.equipment),
+                  coachingCues: splitValues(formState.coachingCues),
+                  progressions: splitValues(formState.progressions),
+                  regressions: splitValues(formState.regressions),
+                  lessonUse: formState.lessonUse,
                 });
                 setStatusMessage("Conditioning exercise updated.");
                 setIsEditing(false);
@@ -185,21 +201,30 @@ export default function ConditioningDetailPage() {
             >
               <input
                 type="text"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
+                value={formState.title}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  updateFormState((current) => ({ ...current, title: nextValue }));
+                }}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
                 placeholder="Title"
                 required
               />
               <textarea
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
+                value={formState.description}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  updateFormState((current) => ({ ...current, description: nextValue }));
+                }}
                 className="min-h-20 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
                 placeholder="Description"
               />
               <select
-                value={difficulty}
-                onChange={(event) => setDifficulty(event.target.value)}
+                value={formState.difficulty}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  updateFormState((current) => ({ ...current, difficulty: nextValue }));
+                }}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
               >
                 {difficultyOptions.map((option) => (
@@ -210,42 +235,60 @@ export default function ConditioningDetailPage() {
               </select>
               <input
                 type="text"
-                value={duration}
-                onChange={(event) => setDuration(event.target.value)}
+                value={formState.duration}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  updateFormState((current) => ({ ...current, duration: nextValue }));
+                }}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
                 placeholder="Duration"
               />
               <input
                 type="text"
-                value={equipment}
-                onChange={(event) => setEquipment(event.target.value)}
+                value={formState.equipment}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  updateFormState((current) => ({ ...current, equipment: nextValue }));
+                }}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
                 placeholder="Equipment (comma separated)"
               />
               <input
                 type="text"
-                value={coachingCues}
-                onChange={(event) => setCoachingCues(event.target.value)}
+                value={formState.coachingCues}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  updateFormState((current) => ({ ...current, coachingCues: nextValue }));
+                }}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
                 placeholder="Coaching cues (comma separated)"
               />
               <input
                 type="text"
-                value={progressions}
-                onChange={(event) => setProgressions(event.target.value)}
+                value={formState.progressions}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  updateFormState((current) => ({ ...current, progressions: nextValue }));
+                }}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
                 placeholder="Progressions (comma separated)"
               />
               <input
                 type="text"
-                value={regressions}
-                onChange={(event) => setRegressions(event.target.value)}
+                value={formState.regressions}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  updateFormState((current) => ({ ...current, regressions: nextValue }));
+                }}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
                 placeholder="Regressions (comma separated)"
               />
               <textarea
-                value={lessonUse}
-                onChange={(event) => setLessonUse(event.target.value)}
+                value={formState.lessonUse}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  updateFormState((current) => ({ ...current, lessonUse: nextValue }));
+                }}
                 className="min-h-16 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
                 placeholder="Lesson use"
               />

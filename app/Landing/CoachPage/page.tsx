@@ -15,7 +15,7 @@ export default function CoachPage() {
 
 	const isGuest = currentCoach?.isGuest ?? true;
 
-	const handleProfileSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+	const handleProfileSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		setErrorMessage("");
 		setStatusMessage("");
@@ -25,14 +25,14 @@ export default function CoachPage() {
 		const email = String(formData.get("email") ?? "");
 
 		try {
-			updateCoachProfile({ displayName, email });
+			await updateCoachProfile({ displayName, email });
 			setStatusMessage("Profile details saved.");
 		} catch (error) {
 			setErrorMessage(error instanceof Error ? error.message : "Unable to save profile details.");
 		}
 	};
 
-	const handlePasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+	const handlePasswordSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		setErrorMessage("");
 		setStatusMessage("");
@@ -43,7 +43,7 @@ export default function CoachPage() {
 		}
 
 		try {
-			changeCoachPassword({ currentPassword, newPassword });
+			await changeCoachPassword({ currentPassword, newPassword });
 			setCurrentPassword("");
 			setNewPassword("");
 			setConfirmPassword("");

@@ -22,14 +22,6 @@ export default function SkillCard({ item, href, onAddToLessonPlan, selected }: S
 
         <p className="mt-4 text-sm leading-6 text-slate-600">{item.description}</p>
 
-        <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-600">
-          <span className="rounded-full bg-violet-100 px-3 py-1 text-violet-800">{item.duration}</span>
-          {item.equipment.slice(0, 2).map((equipment) => (
-            <span key={equipment} className="rounded-full bg-cyan-100 px-3 py-1 text-cyan-800">
-              {equipment}
-            </span>
-          ))}
-        </div>
 
         <div className="mt-5 grid gap-3">
           <p className="text-sm font-medium text-slate-700">Coaching cues</p>

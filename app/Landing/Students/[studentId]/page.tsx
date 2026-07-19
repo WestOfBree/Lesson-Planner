@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import Navbar from "../../../UI/Navbar";
 import { useCoachApp } from "../../../lib/coach-store";
 
@@ -14,17 +14,31 @@ const splitValues = (value: string) =>
 
 const unique = (values: string[]) => Array.from(new Set(values.filter(Boolean)));
 const levelOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper Intermediate", "Advanced"];
+interface StudentFormState {
+  studentId: string;
+  name: string;
+  level: string;
+  focus: string;
+  selectedClassIds: string[];
+  goalsText: string;
+  skillsKnown: string[];
+  strugglesText: string;
+  progressValue: number;
+}
 
 export default function StudentProfilePage() {
   const params = useParams<{ studentId: string }>();
+  const router = useRouter();
   const studentId = params?.studentId;
   const {
     students,
     classes,
+    skillExercises,
     assignedLessonPlans,
     updateStudent,
     updateStudentProgress,
     addStudentNote,
+    deleteStudent,
   } = useCoachApp();
 
   const student = useMemo(
@@ -52,35 +66,17 @@ export default function StudentProfilePage() {
           return !plan.studentIds?.length || plan.studentIds.includes(student.id);
         })
         .sort((a, b) => new Date(b.classDate).getTime() - new Date(a.classDate).getTime()),
-    [assignedLessonPlans, student?.classIds, student?.id],
+    [assignedLessonPlans, student],
   );
 
-  const [name, setName] = useState("");
-  const [level, setLevel] = useState("Beginner");
-  const [focus, setFocus] = useState("");
-  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
-  const [goalsText, setGoalsText] = useState("");
-  const [skillsKnownText, setSkillsKnownText] = useState("");
-  const [strugglesText, setStrugglesText] = useState("");
+  const [draft, setDraft] = useState<StudentFormState | null>(null);
   const [noteText, setNoteText] = useState("");
-  const [progressValue, setProgressValue] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-
-  useEffect(() => {
-    if (!student) {
-      return;
-    }
-
-    setName(student.name);
-    setLevel(student.level || "Beginner");
-    setFocus(student.focus);
-    setSelectedClassIds(student.classIds);
-    setGoalsText(student.goals.join(", "));
-    setSkillsKnownText(student.skillsKnown.join(", "));
-    setStrugglesText(student.struggles.join(", "));
-    setProgressValue(student.progress);
-  }, [student]);
+  const availableSkillTitles = useMemo(
+    () => unique(skillExercises.map((item) => item.title.trim()).filter(Boolean)),
+    [skillExercises],
+  );
 
   if (!student) {
     return (
@@ -101,6 +97,26 @@ export default function StudentProfilePage() {
       </div>
     );
   }
+
+  const baseFormState: StudentFormState = {
+    studentId: student.id,
+    name: student.name,
+    level: student.level || "Beginner",
+    focus: student.focus,
+    selectedClassIds: student.classIds,
+    goalsText: student.goals.join(", "),
+    skillsKnown: unique(student.skillsKnown),
+    strugglesText: student.struggles.join(", "),
+    progressValue: student.progress,
+  };
+  const formState = draft?.studentId === student.id ? draft : baseFormState;
+  const selectableSkillTitles = unique([...availableSkillTitles, ...formState.skillsKnown]);
+  const updateFormState = (updater: (current: StudentFormState) => StudentFormState) => {
+    setDraft((current) => {
+      const activeState = current?.studentId === student.id ? current : baseFormState;
+      return updater(activeState);
+    });
+  };
 
   return (
     <div className="min-h-screen px-4 py-4 sm:px-6 lg:px-8">
@@ -154,13 +170,13 @@ export default function StudentProfilePage() {
 
                 try {
                   updateStudent(student.id, {
-                    name,
-                    level,
-                    focus,
-                    classIds: selectedClassIds,
-                    goals: splitValues(goalsText),
-                    skillsKnown: splitValues(skillsKnownText),
-                    struggles: splitValues(strugglesText),
+                    name: formState.name,
+                    level: formState.level,
+                    focus: formState.focus,
+                    classIds: formState.selectedClassIds,
+                    goals: splitValues(formState.goalsText),
+                    skillsKnown: formState.skillsKnown,
+                    struggles: splitValues(formState.strugglesText),
                   });
                   setStatusMessage("Student profile details saved.");
                 } catch (error) {
@@ -172,8 +188,11 @@ export default function StudentProfilePage() {
                 <span className="text-sm font-medium text-slate-700">Student name</span>
                 <input
                   type="text"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
+                  value={formState.name}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    updateFormState((current) => ({ ...current, name: nextValue }));
+                  }}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
                   placeholder="Student name"
                   required
@@ -183,8 +202,11 @@ export default function StudentProfilePage() {
               <label className="block space-y-2">
                 <span className="text-sm font-medium text-slate-700">Level</span>
                 <select
-                  value={level}
-                  onChange={(event) => setLevel(event.target.value)}
+                  value={formState.level}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    updateFormState((current) => ({ ...current, level: nextValue }));
+                  }}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-teal-600 focus:bg-white"
                 >
                   {levelOptions.map((option) => (
@@ -199,8 +221,11 @@ export default function StudentProfilePage() {
                 <span className="text-sm font-medium text-slate-700">Focus</span>
                 <input
                   type="text"
-                  value={focus}
-                  onChange={(event) => setFocus(event.target.value)}
+                  value={formState.focus}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    updateFormState((current) => ({ ...current, focus: nextValue }));
+                  }}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
                   placeholder="Current training focus"
                 />
@@ -218,13 +243,14 @@ export default function StudentProfilePage() {
                         <span>{classItem.name}</span>
                         <input
                           type="checkbox"
-                          checked={selectedClassIds.includes(classItem.id)}
+                          checked={formState.selectedClassIds.includes(classItem.id)}
                           onChange={(event) => {
-                            setSelectedClassIds((current) =>
-                              event.target.checked
-                                ? [...current, classItem.id]
-                                : current.filter((id) => id !== classItem.id),
-                            );
+                            updateFormState((current) => ({
+                              ...current,
+                              selectedClassIds: event.target.checked
+                                ? [...current.selectedClassIds, classItem.id]
+                                : current.selectedClassIds.filter((id) => id !== classItem.id),
+                            }));
                           }}
                           className="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-700"
                         />
@@ -242,8 +268,11 @@ export default function StudentProfilePage() {
                 <span className="text-sm font-medium text-slate-700">Specific goals</span>
                 <input
                   type="text"
-                  value={goalsText}
-                  onChange={(event) => setGoalsText(event.target.value)}
+                  value={formState.goalsText}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    updateFormState((current) => ({ ...current, goalsText: nextValue }));
+                  }}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
                   placeholder="Comma separated goals"
                 />
@@ -251,21 +280,46 @@ export default function StudentProfilePage() {
 
               <label className="block space-y-2">
                 <span className="text-sm font-medium text-slate-700">Skills known</span>
-                <input
-                  type="text"
-                  value={skillsKnownText}
-                  onChange={(event) => setSkillsKnownText(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
-                  placeholder="Comma separated skills"
-                />
+                {selectableSkillTitles.length ? (
+                  <div className="grid gap-2">
+                    {selectableSkillTitles.map((skillTitle) => (
+                      <label
+                        key={skillTitle}
+                        className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+                      >
+                        <span>{skillTitle}</span>
+                        <input
+                          type="checkbox"
+                          checked={formState.skillsKnown.includes(skillTitle)}
+                          onChange={(event) => {
+                            updateFormState((current) => ({
+                              ...current,
+                              skillsKnown: event.target.checked
+                                ? unique([...current.skillsKnown, skillTitle])
+                                : current.skillsKnown.filter((entry) => entry !== skillTitle),
+                            }));
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-700"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                    Add skills in the Skills Library first, then select them here.
+                  </p>
+                )}
               </label>
 
               <label className="block space-y-2">
                 <span className="text-sm font-medium text-slate-700">Current struggles</span>
                 <input
                   type="text"
-                  value={strugglesText}
-                  onChange={(event) => setStrugglesText(event.target.value)}
+                  value={formState.strugglesText}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    updateFormState((current) => ({ ...current, strugglesText: nextValue }));
+                  }}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
                   placeholder="Comma separated struggles"
                 />
@@ -276,6 +330,19 @@ export default function StudentProfilePage() {
                 className="w-full cursor-pointer rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800"
               >
                 Save profile details
+              </button>
+
+              <button
+                type="button"
+                className="w-full cursor-pointer rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 font-semibold text-rose-700 transition hover:bg-rose-100"
+                onClick={() => {
+                  if (window.confirm(`Delete ${student.name}? This removes the student from classes and related lesson-plan targeting.`)) {
+                    deleteStudent(student.id);
+                    router.push("/Landing/Students");
+                  }
+                }}
+              >
+                Delete student
               </button>
             </form>
 
@@ -320,14 +387,17 @@ export default function StudentProfilePage() {
             <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center justify-between text-sm text-slate-600">
                 <span>Current progress</span>
-                <span>{progressValue}%</span>
+                <span>{formState.progressValue}%</span>
               </div>
               <input
                 type="range"
                 min="0"
                 max="100"
-                value={progressValue}
-                onChange={(event) => setProgressValue(Number(event.target.value))}
+                value={formState.progressValue}
+                onChange={(event) => {
+                  const nextValue = Number(event.target.value);
+                  updateFormState((current) => ({ ...current, progressValue: nextValue }));
+                }}
                 className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-teal-700"
               />
               <button
@@ -336,7 +406,7 @@ export default function StudentProfilePage() {
                 onClick={() => {
                   setErrorMessage("");
                   setStatusMessage("");
-                  updateStudentProgress(student.id, progressValue);
+                  updateStudentProgress(student.id, formState.progressValue);
                   setStatusMessage("Progress update saved.");
                 }}
               >
@@ -445,11 +515,14 @@ export default function StudentProfilePage() {
                 return (
                   <div key={plan.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-slate-900">{plan.title}</p>
+                      <Link href={`/Landing/LessonPlanner/${plan.id}`} className="cursor-pointer text-sm font-semibold text-slate-900 transition hover:text-teal-700">
+                        {plan.title}
+                      </Link>
                       <p className="text-xs text-slate-500">{new Date(`${plan.classDate}T00:00:00`).toLocaleDateString()}</p>
                     </div>
                     <p className="mt-1 text-xs uppercase tracking-[0.25em] text-teal-700">{classItem?.name ?? "Unknown class"}</p>
                     {plan.notes ? <p className="mt-2 text-sm leading-6 text-slate-700">{plan.notes}</p> : null}
+                    {plan.outcomeNotes ? <p className="mt-2 text-sm leading-6 text-emerald-800">Outcome: {plan.outcomeNotes}</p> : null}
                     <div className="mt-2 text-xs text-slate-600">
                       <p>Conditioning: {plan.conditioningIds.length} blocks</p>
                       <p>
@@ -461,7 +534,7 @@ export default function StudentProfilePage() {
               })
             ) : (
               <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                No lesson plans assigned to this student's classes yet.
+                No lesson plans assigned to this student&apos;s classes yet.
               </p>
             )}
           </div>

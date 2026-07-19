@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useCoachApp } from "../lib/coach-store";
+import { useCoachApp } from "@/app/lib/coach-store";
 import {faEye, faEyeSlash} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -14,27 +14,39 @@ export default function LoginModule() {
   const [errorMessage, setErrorMessage] = useState("");
   const { signInCoach } = useCoachApp();
 
+  const resolveAuthErrorMessage = (error) => {
+    if (!(error instanceof Error)) {
+      return "Unable to sign in.";
+    }
+
+    if (error.code === "auth/configuration-not-found") {
+      return "Firebase Email/Password authentication is not enabled for this project. Turn it on in the Firebase console, then try again.";
+    }
+
+    return error.message || "Unable to sign in.";
+  };
+
   const submitSession = async (mode) => {
     try {
       setErrorMessage("");
       await signInCoach({ email, password, mode });
       router.push("/Landing");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to sign in.");
+      setErrorMessage(resolveAuthErrorMessage(error));
     }
   };
 
   if (isRegisterMode) {
     return (
-      <div className="w-full rounded-[1.75rem] border border-pink-200/70 bg-white/85 p-8 shadow-[0_18px_45px_rgba(190,24,93,0.16)] backdrop-blur">
-        <div className="flex items-center justify-between gap-4">
+      <div className="w-full rounded-4xl border border-rose-200/70 bg-linear-to-br from-white via-rose-50/80 to-pink-50/80 p-8 text-slate-950 backdrop-blur">
+        <div className="flex items-center justify-between gap-4 border-b border-rose-100 pb-5">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-pink-700">Register</p>
+            <p className="text-sm uppercase tracking-[0.3em] text-rose-700">Register</p>
             <h2 className="mt-2 text-3xl font-semibold text-slate-950">Create your coach workspace</h2>
           </div>
           <button
             type="button"
-            className="cursor-pointer rounded-full border border-pink-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-pink-300 hover:bg-pink-50"
+            className="cursor-pointer rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 transition hover:border-rose-500 hover:bg-linear-to-r hover:from-rose-600 hover:via-pink-600 hover:to-fuchsia-600 hover:text-white"
             onClick={() => {
               setShowPassword(false);
               setIsRegisterMode(false);
@@ -52,31 +64,38 @@ export default function LoginModule() {
           }}
         >
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-slate-700">Email</span>
+
+          {errorMessage ? (
+            <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {errorMessage}
+            </p>
+          ) : null}
+
+            <span className="text-sm font-medium text-slate-800">Email</span>
             <input
               type="email"
               placeholder="coach@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-2xl border border-pink-200/70 bg-pink-50/55 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-pink-500 focus:bg-white"
+              className="w-full rounded-2xl border border-rose-200/80 bg-white px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-rose-500 focus:bg-white"
               required
             />
           </label>
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-slate-700">Password</span>
+            <span className="text-sm font-medium text-slate-800">Password</span>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Create a password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-2xl border border-pink-200/70 bg-pink-50/55 px-4 py-3 pr-12 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-pink-500 focus:bg-white"
+                className="w-full rounded-2xl border border-rose-200/80 bg-white px-4 py-3 pr-12 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-rose-500 focus:bg-white"
                 required
               />
               <button
                 type="button"
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="cursor-pointer absolute inset-y-0 right-3 flex items-center text-pink-700 transition hover:text-pink-800"
+                className="cursor-pointer absolute inset-y-0 right-3 flex items-center text-rose-700 transition hover:text-rose-900"
                 onClick={() => setShowPassword((current) => !current)}
               >
                 <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
@@ -86,7 +105,7 @@ export default function LoginModule() {
           <div className="mt-2 flex items-center gap-3">
             <button
               type="submit"
-              className="cursor-pointer w-full rounded-2xl bg-linear-to-r from-pink-600 to-rose-500 px-4 py-3 font-semibold text-white transition hover:from-pink-700 hover:to-rose-600"
+              className="cursor-pointer w-full rounded-2xl border border-rose-200 bg-white px-4 py-3 font-semibold text-rose-700 transition hover:border-rose-500 hover:bg-linear-to-r hover:from-rose-600 hover:via-pink-600 hover:to-fuchsia-600 hover:text-white"
             >
               Register and continue
             </button>
@@ -98,10 +117,10 @@ export default function LoginModule() {
   }
 
   return (
-    <div className="w-full rounded-[1.75rem] border border-pink-200/70 bg-white/85 p-8 shadow-[0_18px_45px_rgba(190,24,93,0.16)] backdrop-blur">
-      <div className="flex items-start justify-between gap-4">
+    <div className="w-full rounded-4xl border border-rose-200/70 bg-linear-to-br from-white via-rose-50/70 to-pink-50/80 p-8 text-slate-950 backdrop-blur">
+      <div className="flex items-start justify-between gap-4 border-b border-rose-100 pb-5">
         <div>
-          <p className="text-sm uppercase tracking-[0.3em] text-pink-700">Welcome back</p>
+          <p className="text-sm uppercase tracking-[0.3em] text-rose-700">Welcome back</p>
           <h2 className="mt-2 text-3xl font-semibold text-slate-950">Sign in to Aerial Coach</h2>
           <p className="mt-3 max-w-md text-sm leading-6 text-slate-600">
             Use a guest session to explore the workspace, or sign in with your email to keep your lesson plan and rosters together.
@@ -109,7 +128,7 @@ export default function LoginModule() {
         </div>
         <button
           type="button"
-          className="cursor-pointer rounded-full border border-pink-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-pink-300 hover:bg-pink-50"
+          className="cursor-pointer rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 transition hover:border-rose-500 hover:bg-linear-to-r hover:from-rose-600 hover:via-pink-600 hover:to-fuchsia-600 hover:text-white"
           onClick={() => {
             setShowPassword(false);
             setIsRegisterMode(true);
@@ -122,16 +141,16 @@ export default function LoginModule() {
       <div className="mt-8 space-y-4">
         <button
           type="button"
-          className="flex w-full items-center justify-center gap-3 rounded-2xl border border-pink-300/60 bg-linear-to-r from-fuchsia-700 via-pink-600 to-rose-500 px-4 py-3 font-semibold text-white transition hover:from-fuchsia-800 hover:via-pink-700 hover:to-rose-600"
+          className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-2xl border border-rose-200 bg-white px-4 py-3 font-semibold text-rose-700 transition hover:border-rose-500 hover:bg-linear-to-r hover:from-rose-600 hover:via-pink-600 hover:to-fuchsia-600 hover:text-white"
           onClick={() => submitSession("guest")}
         >
           Continue as a guest coach
         </button>
 
-        <div className="flex items-center gap-3 text-xs uppercase tracking-[0.3em] text-slate-400">
-          <span className="h-px flex-1 bg-slate-200" />
+        <div className="flex items-center gap-3 text-xs uppercase tracking-[0.3em] text-slate-500">
+          <span className="h-px flex-1 bg-rose-100" />
           <span>or sign in</span>
-          <span className="h-px flex-1 bg-slate-200" />
+          <span className="h-px flex-1 bg-rose-100" />
         </div>
 
         <form
@@ -142,32 +161,32 @@ export default function LoginModule() {
           }}
         >
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-slate-700">Email</span>
+            <span className="text-sm font-medium text-slate-800">Email</span>
             <input
               type="email"
               placeholder="coach@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-2xl border border-pink-200/70 bg-pink-50/55 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-pink-500 focus:bg-white"
+              className="w-full rounded-2xl border border-rose-200/80 bg-white px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-rose-500 focus:bg-white"
               required
             />
           </label>
 
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-slate-700">Password</span>
+            <span className="text-sm font-medium text-slate-800">Password</span>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-2xl border border-pink-200/70 bg-pink-50/55 px-4 py-3 pr-12 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-pink-500 focus:bg-white"
+                className="w-full rounded-2xl border border-rose-200/80 bg-white px-4 py-3 pr-12 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-rose-500 focus:bg-white"
                 required
               />
               <button
                 type="button"
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="cursor-pointer absolute inset-y-0 right-3 flex items-center text-pink-700 transition hover:text-pink-800"
+                className="cursor-pointer absolute inset-y-0 right-3 flex items-center text-rose-700 transition hover:text-rose-900"
                 onClick={() => setShowPassword((current) => !current)}
               >
                 <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
@@ -181,7 +200,7 @@ export default function LoginModule() {
 
           <button
             type="submit"
-            className="w-full rounded-2xl bg-linear-to-r from-pink-600 to-rose-500 px-4 py-3 font-semibold text-white transition hover:from-pink-700 hover:to-rose-600"
+            className="w-full rounded-2xl border border-rose-200 bg-white px-4 py-3 font-semibold text-rose-700 transition hover:border-rose-500 hover:bg-linear-to-r hover:from-rose-600 hover:via-pink-600 hover:to-fuchsia-600 hover:text-white"
           >
             Sign in
           </button>

@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import Navbar from "../../UI/Navbar";
-import { useCoachApp } from "../../lib/coach-store";
+import { useCoachApp } from "@/app/lib/coach-store";
+import type { AssignedLessonPlan, CoachClassData, LibraryItem, StudentProfileData } from "@/app/lib/coach-data";
 
 export default function LessonPlannerPage() {
 	const {
@@ -20,20 +22,25 @@ export default function LessonPlannerPage() {
 	const [notes, setNotes] = useState("");
 	const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
 	const [selectedConditioningIds, setSelectedConditioningIds] = useState<string[]>([]);
+	const [conditioningRepsById, setConditioningRepsById] = useState<Record<string, number>>({});
 	const [selectedClassSkillIds, setSelectedClassSkillIds] = useState<string[]>([]);
 	const [perStudentSkillIds, setPerStudentSkillIds] = useState<Record<string, string[]>>({});
 	const [statusMessage, setStatusMessage] = useState("");
 	const [errorMessage, setErrorMessage] = useState("");
 
 	const selectedClass = useMemo(
-		() => classes.find((entry) => entry.id === classId),
+		() => classes.find((entry: CoachClassData) => entry.id === classId),
 		[classId, classes],
 	);
 
 	const classStudents = useMemo(
-		() => students.filter((student) => selectedClass?.studentIds.includes(student.id)),
+		() => students.filter((student: StudentProfileData) => selectedClass?.studentIds.includes(student.id)),
 		[selectedClass?.studentIds, students],
 	);
+
+	const activeStudentIds = selectedStudentIds.length
+		? selectedStudentIds
+		: classStudents.map((student: StudentProfileData) => student.id);
 
 	return (
 		<div className="min-h-screen px-4 py-4 sm:px-6 lg:px-8">
@@ -72,6 +79,7 @@ export default function LessonPlannerPage() {
 									notes,
 									studentIds: selectedStudentIds,
 									conditioningIds: selectedConditioningIds,
+									conditioningReps: conditioningRepsById,
 									skillIds: selectedClassSkillIds,
 									perStudentSkillIds,
 								});
@@ -81,6 +89,7 @@ export default function LessonPlannerPage() {
 								setNotes("");
 								setSelectedStudentIds([]);
 								setSelectedConditioningIds([]);
+								setConditioningRepsById({});
 								setSelectedClassSkillIds([]);
 								setPerStudentSkillIds({});
 								setStatusMessage("Lesson plan assigned to class.");
@@ -115,7 +124,7 @@ export default function LessonPlannerPage() {
 										required
 									>
 										<option value="">Select class</option>
-										{classes.map((classItem) => (
+										{classes.map((classItem: CoachClassData) => (
 											<option key={classItem.id} value={classItem.id}>
 												{classItem.name}
 											</option>
@@ -151,7 +160,7 @@ export default function LessonPlannerPage() {
 								<div className="grid gap-2">
 									{classId ? (
 										classStudents.length ? (
-											classStudents.map((student) => (
+													classStudents.map((student: StudentProfileData) => (
 												<label
 													key={student.id}
 													className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
@@ -186,25 +195,60 @@ export default function LessonPlannerPage() {
 
 							<div className="space-y-2">
 								<p className="text-sm font-medium text-slate-700">Conditioning blocks</p>
-								<div className="grid gap-2">
-									{conditioningExercises.map((item) => (
+								<p className="text-xs text-slate-500">Each selected block can include a rep target for class tracking.</p>
+								<div className="grid max-h-128 gap-2 overflow-y-auto pr-1">
+										{conditioningExercises.map((item: LibraryItem) => (
 										<label
 											key={item.id}
 											className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
 										>
-											<span>{item.title}</span>
+											<span className="flex-1">{item.title}</span>
+											<div className="flex items-center gap-2">
+												{selectedConditioningIds.includes(item.id) ? (
+													<input
+														type="number"
+														min={1}
+														step={1}
+														value={conditioningRepsById[item.id] ?? 8}
+														onChange={(event) => {
+															const nextValue = Number(event.target.value);
+
+															setConditioningRepsById((current) => ({
+																...current,
+																[item.id]: Number.isFinite(nextValue) && nextValue > 0 ? Math.round(nextValue) : 1,
+															}));
+														}}
+														className="w-20 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-teal-600"
+														aria-label={`${item.title} reps`}
+													/>
+												) : (
+													<span className="w-20 text-right text-xs text-slate-400">set reps</span>
+												)}
 											<input
 												type="checkbox"
 												checked={selectedConditioningIds.includes(item.id)}
 												onChange={(event) => {
-													setSelectedConditioningIds((current) =>
-														event.target.checked
-															? [...current, item.id]
-															: current.filter((id) => id !== item.id),
-													);
+													setSelectedConditioningIds((current) => {
+														if (event.target.checked) {
+															return [...current, item.id];
+														}
+
+														return current.filter((id) => id !== item.id);
+													});
+
+													setConditioningRepsById((current) => {
+														if (event.target.checked) {
+															return { ...current, [item.id]: current[item.id] ?? 8 };
+														}
+
+														const next = { ...current };
+														delete next[item.id];
+														return next;
+													});
 												}}
 												className="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-700"
 											/>
+											</div>
 										</label>
 									))}
 								</div>
@@ -212,8 +256,8 @@ export default function LessonPlannerPage() {
 
 							<div className="space-y-2">
 								<p className="text-sm font-medium text-slate-700">Skill blocks for whole class</p>
-								<div className="grid gap-2">
-									{skillExercises.map((item) => (
+								<div className="grid max-h-128 gap-2 overflow-y-auto pr-1">
+										{skillExercises.map((item: LibraryItem) => (
 										<label
 											key={item.id}
 											className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
@@ -239,9 +283,9 @@ export default function LessonPlannerPage() {
 							<div className="space-y-3">
 								<p className="text-sm font-medium text-slate-700">Skill blocks per student</p>
 								<p className="text-xs text-slate-500">Assign extra or personalized skills to specific students.</p>
-								{(selectedStudentIds.length ? selectedStudentIds : classStudents.map((student) => student.id)).length ? (
-									(selectedStudentIds.length ? selectedStudentIds : classStudents.map((student) => student.id)).map((studentId) => {
-										const student = students.find((entry) => entry.id === studentId);
+								{activeStudentIds.length ? (
+									activeStudentIds.map((studentId: string) => {
+										const student = students.find((entry: StudentProfileData) => entry.id === studentId);
 
 										if (!student) {
 											return null;
@@ -252,8 +296,8 @@ export default function LessonPlannerPage() {
 										return (
 											<div key={student.id} className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
 												<p className="text-sm font-semibold text-slate-800">{student.name}</p>
-												<div className="grid gap-2">
-													{skillExercises.map((item) => (
+												<div className="grid max-h-88 gap-2 overflow-y-auto pr-1">
+															{skillExercises.map((item: LibraryItem) => (
 														<label
 															key={`${student.id}-${item.id}`}
 															className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
@@ -308,9 +352,9 @@ export default function LessonPlannerPage() {
 					</form>
 
 					<section className="space-y-4">
-						{assignedLessonPlans.length ? (
-							assignedLessonPlans.map((plan) => {
-								const classItem = classes.find((entry) => entry.id === plan.classId);
+								{assignedLessonPlans.length ? (
+									assignedLessonPlans.map((plan: AssignedLessonPlan) => {
+										const classItem = classes.find((entry: CoachClassData) => entry.id === plan.classId);
 
 								return (
 									<article
@@ -319,15 +363,38 @@ export default function LessonPlannerPage() {
 									>
 										<div className="flex flex-wrap items-start justify-between gap-4">
 											<div>
-												<p className="text-xs uppercase tracking-[0.35em] text-teal-700">Assigned lesson</p>
-												<h3 className="mt-2 text-xl font-semibold text-slate-950">{plan.title}</h3>
+												<p className="text-xs uppercase tracking-[0.35em] text-teal-700">Past lessons</p>
+												<h3 className="mt-2 text-xl font-semibold text-slate-950">
+													<Link href={`/Landing/LessonPlanner/${plan.id}`} className="cursor-pointer transition hover:text-teal-700">
+														{plan.title}
+													</Link>
+												</h3>
 												<p className="mt-1 text-sm text-slate-500">
 													{classItem?.name ?? "Unknown class"} · {new Date(`${plan.classDate}T00:00:00`).toLocaleDateString()}
 												</p>
 											</div>
+											<div className="flex flex-wrap gap-2">
+												<Link
+													href={`/Landing/LessonPlanner/${plan.id}`}
+													className="inline-flex cursor-pointer rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+												>
+													View details
+												</Link>
+												<Link
+													href={`/Landing/LessonPlanner/${plan.id}?edit=1`}
+													className="inline-flex cursor-pointer rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-teal-700 transition hover:border-teal-300 hover:bg-teal-100"
+												>
+													Edit lesson
+												</Link>
+											</div>
 										</div>
 
 										{plan.notes ? <p className="mt-4 text-sm leading-6 text-slate-600">{plan.notes}</p> : null}
+										{plan.outcomeNotes ? (
+											<p className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+												Outcome notes: {plan.outcomeNotes}
+											</p>
+										) : null}
 
 										<div className="mt-4 text-sm text-slate-600">
 											<p>
