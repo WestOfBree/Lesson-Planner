@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  type AssignedLessonPlan,
   coachNameFromEmail,
   defaultConditioningExercises,
   defaultSkillExercises,
@@ -16,6 +17,7 @@ import {
   type LessonPlanState,
   type LibraryItem,
   type NewClassInput,
+  type NewLessonPlanInput,
   type NewLibraryItemInput,
   type NewStudentInput,
   type StudentProfileData,
@@ -33,6 +35,7 @@ type CoachState = {
   classes: CoachClassData[];
   conditioningExercises: LibraryItem[];
   skillExercises: LibraryItem[];
+  assignedLessonPlans: AssignedLessonPlan[];
   lessonPlan: LessonPlanState;
   accounts: Record<string, { displayName: string; password: string }>;
 };
@@ -43,10 +46,30 @@ type CoachStore = CoachState & {
   updateCoachProfile: (input: { displayName: string; email: string }) => CoachSession;
   changeCoachPassword: (input: { currentPassword: string; newPassword: string }) => void;
   addStudent: (input: NewStudentInput) => StudentProfileData;
+  updateStudent: (
+    studentId: string,
+    input: {
+      name: string;
+      level: string;
+      focus: string;
+      classIds: string[];
+      goals: string[];
+      skillsKnown: string[];
+      struggles: string[];
+    },
+  ) => void;
   updateStudentProgress: (studentId: string, progress: number) => void;
+  updateStudentProfile: (
+    studentId: string,
+    input: { focus: string; goals: string[]; skillsKnown: string[]; struggles: string[] },
+  ) => void;
+  addStudentNote: (studentId: string, note: string) => void;
   addClass: (input: NewClassInput) => CoachClassData;
   addConditioningExercise: (input: NewLibraryItemInput) => LibraryItem;
+  updateConditioningExercise: (exerciseId: string, input: NewLibraryItemInput) => void;
   addSkillExercise: (input: NewLibraryItemInput) => LibraryItem;
+  updateSkillExercise: (exerciseId: string, input: NewLibraryItemInput) => void;
+  assignLessonPlanToClass: (input: NewLessonPlanInput) => AssignedLessonPlan;
   toggleLessonPlanItem: (kind: "conditioning" | "skill", itemId: string) => void;
   clearLessonPlan: () => void;
 };
@@ -61,6 +84,7 @@ const initialState: CoachState = {
   classes: [],
   conditioningExercises: defaultConditioningExercises,
   skillExercises: defaultSkillExercises,
+  assignedLessonPlans: [],
   lessonPlan: {
     conditioningIds: [],
     skillIds: [],
@@ -74,14 +98,67 @@ const unique = (values: string[]) => Array.from(new Set(values.filter(Boolean)))
 
 const createId = (prefix: string) => `${prefix}-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`;
 
+const normalizeLessonPlan = (plan: AssignedLessonPlan): AssignedLessonPlan => ({
+  ...plan,
+  studentIds: plan.studentIds ?? [],
+  conditioningIds: plan.conditioningIds ?? [],
+  skillIds: plan.skillIds ?? [],
+  perStudentSkillIds: plan.perStudentSkillIds ?? {},
+});
+
+const mergeLibraryItems = (defaults: LibraryItem[], stored: LibraryItem[] | undefined): LibraryItem[] => {
+  const merged = new Map(defaults.map((item) => [item.id, item]));
+
+  (stored ?? []).forEach((item) => {
+    merged.set(item.id, item);
+  });
+
+  return Array.from(merged.values());
+};
+
+const normalizeStudent = (student: StudentProfileData): StudentProfileData => {
+  const notesHistory =
+    student.notesHistory?.length
+      ? student.notesHistory
+      : student.notes
+        ? [
+            {
+              id: createId("note"),
+              note: student.notes,
+              createdAt: student.lastUpdated || new Date().toISOString(),
+            },
+          ]
+        : [];
+
+  const progressHistory =
+    student.progressHistory?.length
+      ? student.progressHistory
+      : [
+          {
+            id: createId("progress"),
+            progress: student.progress,
+            createdAt: student.lastUpdated || new Date().toISOString(),
+          },
+        ];
+
+  return {
+    ...student,
+    goals: student.goals ?? [],
+    skillsKnown: student.skillsKnown ?? [],
+    struggles: student.struggles ?? [],
+    notesHistory,
+    progressHistory,
+  };
+};
+
 const mergeState = (value: Partial<CoachState> | null | undefined): CoachState => ({
   ...initialState,
   ...value,
-  conditioningExercises:
-    value?.conditioningExercises?.length ? value.conditioningExercises : initialState.conditioningExercises,
-  skillExercises: value?.skillExercises?.length ? value.skillExercises : initialState.skillExercises,
-  students: value?.students ?? initialState.students,
+  conditioningExercises: mergeLibraryItems(initialState.conditioningExercises, value?.conditioningExercises),
+  skillExercises: mergeLibraryItems(initialState.skillExercises, value?.skillExercises),
+  students: value?.students?.map((student) => normalizeStudent(student)) ?? initialState.students,
   classes: value?.classes ?? initialState.classes,
+  assignedLessonPlans: value?.assignedLessonPlans?.map((plan) => normalizeLessonPlan(plan)) ?? initialState.assignedLessonPlans,
   lessonPlan: value?.lessonPlan ?? initialState.lessonPlan,
   currentCoach: value?.currentCoach ?? initialState.currentCoach,
   accounts: value?.accounts ?? initialState.accounts,
@@ -316,16 +393,35 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
 
   const addStudent = (input: NewStudentInput) => {
     const classIds = unique(input.classIds);
+    const createdAt = new Date().toISOString();
     const student: StudentProfileData = {
       id: createId("student"),
       name: input.name.trim(),
       level: input.level.trim(),
       focus: input.focus.trim(),
       notes: input.notes.trim(),
+      notesHistory: input.notes.trim()
+        ? [
+            {
+              id: createId("note"),
+              note: input.notes.trim(),
+              createdAt,
+            },
+          ]
+        : [],
       classIds,
       goals: unique(input.goals),
+      skillsKnown: unique(input.skillsKnown),
+      struggles: unique(input.struggles),
       progress: input.progress,
-      lastUpdated: new Date().toISOString(),
+      progressHistory: [
+        {
+          id: createId("progress"),
+          progress: input.progress,
+          createdAt,
+        },
+      ],
+      lastUpdated: createdAt,
     };
 
     persistState((current) => ({
@@ -341,12 +437,129 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     return student;
   };
 
-  const updateStudentProgress = (studentId: string, progress: number) => {
+  const updateStudent = (
+    studentId: string,
+    input: {
+      name: string;
+      level: string;
+      focus: string;
+      classIds: string[];
+      goals: string[];
+      skillsKnown: string[];
+      struggles: string[];
+    },
+  ) => {
+    const updatedAt = new Date().toISOString();
+    const nextClassIds = unique(input.classIds);
+
     persistState((current) => ({
       ...current,
       students: current.students.map((student) =>
         student.id === studentId
-          ? { ...student, progress, lastUpdated: new Date().toISOString() }
+          ? {
+              ...student,
+              name: input.name.trim(),
+              level: input.level.trim(),
+              focus: input.focus.trim(),
+              classIds: nextClassIds,
+              goals: unique(input.goals),
+              skillsKnown: unique(input.skillsKnown),
+              struggles: unique(input.struggles),
+              lastUpdated: updatedAt,
+            }
+          : student,
+      ),
+      classes: current.classes.map((classItem) => {
+        const shouldIncludeStudent = nextClassIds.includes(classItem.id);
+        const hasStudent = classItem.studentIds.includes(studentId);
+
+        if (shouldIncludeStudent && !hasStudent) {
+          return { ...classItem, studentIds: [...classItem.studentIds, studentId] };
+        }
+
+        if (!shouldIncludeStudent && hasStudent) {
+          return { ...classItem, studentIds: classItem.studentIds.filter((id) => id !== studentId) };
+        }
+
+        return classItem;
+      }),
+    }));
+  };
+
+  const updateStudentProgress = (studentId: string, progress: number) => {
+    const updatedAt = new Date().toISOString();
+
+    persistState((current) => ({
+      ...current,
+      students: current.students.map((student) =>
+        student.id === studentId
+          ? {
+              ...student,
+              progress,
+              progressHistory: [
+                ...student.progressHistory,
+                {
+                  id: createId("progress"),
+                  progress,
+                  createdAt: updatedAt,
+                },
+              ],
+              lastUpdated: updatedAt,
+            }
+          : student,
+      ),
+    }));
+  };
+
+  const updateStudentProfile = (
+    studentId: string,
+    input: { focus: string; goals: string[]; skillsKnown: string[]; struggles: string[] },
+  ) => {
+    const updatedAt = new Date().toISOString();
+
+    persistState((current) => ({
+      ...current,
+      students: current.students.map((student) =>
+        student.id === studentId
+          ? {
+              ...student,
+              focus: input.focus.trim(),
+              goals: unique(input.goals),
+              skillsKnown: unique(input.skillsKnown),
+              struggles: unique(input.struggles),
+              lastUpdated: updatedAt,
+            }
+          : student,
+      ),
+    }));
+  };
+
+  const addStudentNote = (studentId: string, note: string) => {
+    const trimmedNote = note.trim();
+
+    if (!trimmedNote) {
+      throw new Error("Enter a note before saving.");
+    }
+
+    const updatedAt = new Date().toISOString();
+
+    persistState((current) => ({
+      ...current,
+      students: current.students.map((student) =>
+        student.id === studentId
+          ? {
+              ...student,
+              notes: trimmedNote,
+              notesHistory: [
+                {
+                  id: createId("note"),
+                  note: trimmedNote,
+                  createdAt: updatedAt,
+                },
+                ...student.notesHistory,
+              ],
+              lastUpdated: updatedAt,
+            }
           : student,
       ),
     }));
@@ -389,6 +602,29 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     return item;
   };
 
+  const updateConditioningExercise = (exerciseId: string, input: NewLibraryItemInput) => {
+    persistState((current) => ({
+      ...current,
+      conditioningExercises: current.conditioningExercises.map((item) =>
+        item.id === exerciseId
+          ? {
+              ...item,
+              slug: slugify(input.title),
+              title: input.title.trim(),
+              description: input.description.trim(),
+              difficulty: input.difficulty.trim(),
+              duration: input.duration.trim(),
+              equipment: unique(input.equipment),
+              coachingCues: unique(input.coachingCues),
+              progressions: unique(input.progressions),
+              regressions: unique(input.regressions),
+              lessonUse: input.lessonUse.trim(),
+            }
+          : item,
+      ),
+    }));
+  };
+
   const addSkillExercise = (input: NewLibraryItemInput) => {
     const item = normalizeItem(input, "Aerial Skill");
 
@@ -398,6 +634,94 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     }));
 
     return item;
+  };
+
+  const updateSkillExercise = (exerciseId: string, input: NewLibraryItemInput) => {
+    persistState((current) => ({
+      ...current,
+      skillExercises: current.skillExercises.map((item) =>
+        item.id === exerciseId
+          ? {
+              ...item,
+              slug: slugify(input.title),
+              title: input.title.trim(),
+              description: input.description.trim(),
+              difficulty: input.difficulty.trim(),
+              duration: input.duration.trim(),
+              equipment: unique(input.equipment),
+              coachingCues: unique(input.coachingCues),
+              progressions: unique(input.progressions),
+              regressions: unique(input.regressions),
+              lessonUse: input.lessonUse.trim(),
+            }
+          : item,
+      ),
+    }));
+  };
+
+  const assignLessonPlanToClass = (input: NewLessonPlanInput) => {
+    const title = input.title.trim();
+    const classId = input.classId.trim();
+    const classDate = input.classDate.trim();
+    const notes = input.notes.trim();
+    const studentIds = unique(input.studentIds);
+    const conditioningIds = unique(input.conditioningIds);
+    const skillIds = unique(input.skillIds);
+    const perStudentSkillIds = input.perStudentSkillIds ?? {};
+
+    if (!classId || !classDate) {
+      throw new Error("Class and class date are required.");
+    }
+
+    const classItem = getSnapshot().classes.find((entry) => entry.id === classId);
+
+    if (!classItem) {
+      throw new Error("Selected class could not be found.");
+    }
+
+    const resolvedTitle = title || `${classItem.name} - ${classDate}`;
+    const validStudentIds = studentIds.filter((studentId) => classItem.studentIds.includes(studentId));
+    const lessonScopeStudentIds = validStudentIds.length ? validStudentIds : [];
+    const eligibleStudentIds = lessonScopeStudentIds.length ? lessonScopeStudentIds : classItem.studentIds;
+    const normalizedPerStudentSkillIds = Object.entries(perStudentSkillIds).reduce<Record<string, string[]>>(
+      (current, [studentId, ids]) => {
+        if (!eligibleStudentIds.includes(studentId)) {
+          return current;
+        }
+
+        const normalizedIds = unique(ids ?? []);
+
+        if (!normalizedIds.length) {
+          return current;
+        }
+
+        current[studentId] = normalizedIds;
+        return current;
+      },
+      {},
+    );
+
+    const createdAt = new Date().toISOString();
+
+    const plan: AssignedLessonPlan = {
+      id: createId("lesson-plan"),
+      title: resolvedTitle,
+      classId,
+      classDate,
+      notes,
+      studentIds: lessonScopeStudentIds,
+      conditioningIds,
+      skillIds,
+      perStudentSkillIds: normalizedPerStudentSkillIds,
+      createdAt,
+    };
+
+    persistState((current) => ({
+      ...current,
+      assignedLessonPlans: [plan, ...current.assignedLessonPlans],
+    }));
+
+    return plan;
   };
 
   const toggleLessonPlanItem = (kind: "conditioning" | "skill", itemId: string) => {
@@ -435,10 +759,16 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     updateCoachProfile,
     changeCoachPassword,
     addStudent,
+    updateStudent,
     updateStudentProgress,
+    updateStudentProfile,
+    addStudentNote,
     addClass,
     addConditioningExercise,
+    updateConditioningExercise,
     addSkillExercise,
+    updateSkillExercise,
+    assignLessonPlanToClass,
     toggleLessonPlanItem,
     clearLessonPlan,
   };

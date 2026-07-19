@@ -1,14 +1,58 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import Navbar from "../../../UI/Navbar";
 import { useCoachApp } from "../../../lib/coach-store";
 
+const splitValues = (value: string) =>
+  value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+const difficultyOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper Intermediate", "Advanced"];
+
 export default function ConditioningDetailPage() {
   const params = useParams<{ exerciseId: string }>();
-  const { conditioningExercises, lessonPlan, toggleLessonPlanItem } = useCoachApp();
+  const searchParams = useSearchParams();
+  const { conditioningExercises, lessonPlan, toggleLessonPlanItem, updateConditioningExercise } = useCoachApp();
   const exercise = conditioningExercises.find((item) => item.slug === params.exerciseId || item.id === params.exerciseId);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [difficulty, setDifficulty] = useState("Beginner");
+  const [duration, setDuration] = useState("");
+  const [equipment, setEquipment] = useState("");
+  const [coachingCues, setCoachingCues] = useState("");
+  const [progressions, setProgressions] = useState("");
+  const [regressions, setRegressions] = useState("");
+  const [lessonUse, setLessonUse] = useState("");
+
+  useEffect(() => {
+    if (!exercise) {
+      return;
+    }
+
+    setTitle(exercise.title);
+    setDescription(exercise.description || "");
+    setDifficulty(exercise.difficulty || "Beginner");
+    setDuration(exercise.duration || "");
+    setEquipment(exercise.equipment.join(", "));
+    setCoachingCues(exercise.coachingCues.join(", "));
+    setProgressions(exercise.progressions.join(", "));
+    setRegressions(exercise.regressions.join(", "));
+    setLessonUse(exercise.lessonUse || "");
+  }, [exercise]);
+
+  useEffect(() => {
+    if (searchParams.get("edit") === "1") {
+      setIsEditing(true);
+    }
+  }, [searchParams]);
 
   if (!exercise) {
     return (
@@ -103,6 +147,116 @@ export default function ConditioningDetailPage() {
           >
             {selected ? "Remove from lesson plan" : "Add to lesson plan"}
           </button>
+
+          <button
+            type="button"
+            className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            onClick={() => {
+              setStatusMessage("");
+              setIsEditing((current) => !current);
+            }}
+          >
+            {isEditing ? "Cancel edit" : "Edit exercise"}
+          </button>
+
+          {statusMessage ? (
+            <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{statusMessage}</p>
+          ) : null}
+
+          {isEditing ? (
+            <form
+              className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                updateConditioningExercise(exercise.id, {
+                  title,
+                  description,
+                  difficulty,
+                  duration,
+                  equipment: splitValues(equipment),
+                  coachingCues: splitValues(coachingCues),
+                  progressions: splitValues(progressions),
+                  regressions: splitValues(regressions),
+                  lessonUse,
+                });
+                setStatusMessage("Conditioning exercise updated.");
+                setIsEditing(false);
+              }}
+            >
+              <input
+                type="text"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
+                placeholder="Title"
+                required
+              />
+              <textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                className="min-h-20 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
+                placeholder="Description"
+              />
+              <select
+                value={difficulty}
+                onChange={(event) => setDifficulty(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
+              >
+                {difficultyOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={duration}
+                onChange={(event) => setDuration(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
+                placeholder="Duration"
+              />
+              <input
+                type="text"
+                value={equipment}
+                onChange={(event) => setEquipment(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
+                placeholder="Equipment (comma separated)"
+              />
+              <input
+                type="text"
+                value={coachingCues}
+                onChange={(event) => setCoachingCues(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
+                placeholder="Coaching cues (comma separated)"
+              />
+              <input
+                type="text"
+                value={progressions}
+                onChange={(event) => setProgressions(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
+                placeholder="Progressions (comma separated)"
+              />
+              <input
+                type="text"
+                value={regressions}
+                onChange={(event) => setRegressions(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
+                placeholder="Regressions (comma separated)"
+              />
+              <textarea
+                value={lessonUse}
+                onChange={(event) => setLessonUse(event.target.value)}
+                className="min-h-16 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
+                placeholder="Lesson use"
+              />
+              <button
+                type="submit"
+                className="w-full rounded-xl bg-teal-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-teal-800"
+              >
+                Save changes
+              </button>
+            </form>
+          ) : null}
 
           <Link
             href="/Landing/ConditioningLibrary"

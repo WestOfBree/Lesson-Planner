@@ -11,6 +11,8 @@ const splitValues = (value: string) =>
     .map((entry) => entry.trim())
     .filter(Boolean);
 
+const difficultyOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper Intermediate", "Advanced"];
+
 export default function SkillsLibraryPage() {
   const { skillExercises, addSkillExercise, lessonPlan, toggleLessonPlanItem } = useCoachApp();
   const [title, setTitle] = useState("");
@@ -91,12 +93,17 @@ export default function SkillsLibraryPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block space-y-2">
                   <span className="text-sm font-medium text-slate-700">Difficulty</span>
-                  <input
-                    type="text"
+                  <select
                     value={difficulty}
                     onChange={(event) => setDifficulty(event.target.value)}
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-teal-600 focus:bg-white"
-                  />
+                  >
+                    {difficultyOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </label>
 
                 <label className="block space-y-2">

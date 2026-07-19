@@ -1,10 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8f5ef;
-  --foreground: #10212b;
-  --accent: #0f766e;
-  --accent-strong: #134e4a;
+  --background: #f7f9ff;
+  --foreground: #1f2637;
+  --accent: #f59e0b;
+  --accent-strong: #d97706;
+  --color-main: #4f46e5;
+  --color-secondary: #0891b2;
+  --color-accent-a: #f59e0b;
+  --color-accent-b: #f43f5e;
+  --card: rgba(255, 255, 255, 0.86);
+  --card-muted: rgba(255, 255, 255, 0.74);
+  --border-soft: rgba(79, 70, 229, 0.24);
+  --shadow-soft: 0 20px 54px rgba(79, 70, 229, 0.15);
 }
 
 @theme inline {
@@ -22,9 +30,599 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), sans-serif;
+  min-height: 100vh;
+  transition: background-color 300ms ease, color 250ms ease;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -2;
+  opacity: 1;
+  background:
+    radial-gradient(62vmax 62vmax at 8% 12%, rgba(99, 102, 241, 0.26), transparent 70%),
+    radial-gradient(64vmax 64vmax at 90% 16%, rgba(56, 189, 248, 0.24), transparent 72%),
+    radial-gradient(68vmax 62vmax at 20% 92%, rgba(251, 146, 60, 0.2), transparent 74%),
+    radial-gradient(60vmax 58vmax at 86% 82%, rgba(244, 63, 94, 0.18), transparent 74%),
+    linear-gradient(180deg, #f9fbff 0%, #f4f8ff 100%);
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.2;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(31, 38, 55, 0.06) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(90deg, rgba(31, 38, 55, 0.05) 0 1px, transparent 1px 6px);
 }
 
 ::selection {
-  background: rgba(15, 118, 110, 0.22);
+  background: rgba(99, 102, 241, 0.24);
   color: var(--foreground);
+}
+
+/*
+  Project color system:
+  main: var(--color-main)
+  secondary: var(--color-secondary)
+  accent A: var(--color-accent-a)
+  accent B: var(--color-accent-b)
+*/
+
+main > section,
+main > article,
+main > aside,
+main form,
+main [class*="rounded-[1.75rem]"],
+main [class*="rounded-3xl"] {
+  border-color: var(--border-soft) !important;
+}
+
+[class*="bg-white/80"],
+[class*="bg-white/75"],
+[class*="bg-white"] {
+  background-color: var(--card);
+}
+
+[class*="bg-slate-50"],
+[class*="bg-slate-100"] {
+  background-color: var(--card-muted);
+}
+
+[class*="shadow-[0_16px_40px_rgba(15,23,42,0.08)]"],
+[class*="shadow-[0_12px_30px_rgba(15,23,42,0.06)]"] {
+  box-shadow: var(--shadow-soft);
+}
+
+/* Text color normalization (light mode only) */
+html:not(.dark) [class^="text-indigo-"],
+html:not(.dark) [class*=" text-indigo-"],
+html:not(.dark) [class^="text-violet-"],
+html:not(.dark) [class*=" text-violet-"],
+html:not(.dark) [class^="text-fuchsia-"],
+html:not(.dark) [class*=" text-fuchsia-"] {
+  color: var(--color-main) !important;
+}
+
+html:not(.dark) [class^="text-cyan-"],
+html:not(.dark) [class*=" text-cyan-"],
+html:not(.dark) [class^="text-teal-"],
+html:not(.dark) [class*=" text-teal-"],
+html:not(.dark) [class^="text-emerald-"],
+html:not(.dark) [class*=" text-emerald-"] {
+  color: var(--color-secondary) !important;
+}
+
+html:not(.dark) [class^="text-orange-"],
+html:not(.dark) [class*=" text-orange-"],
+html:not(.dark) [class^="text-amber-"],
+html:not(.dark) [class*=" text-amber-"],
+html:not(.dark) [class^="text-yellow-"],
+html:not(.dark) [class*=" text-yellow-"] {
+  color: var(--color-accent-a) !important;
+}
+
+html:not(.dark) [class^="text-pink-"],
+html:not(.dark) [class*=" text-pink-"],
+html:not(.dark) [class^="text-rose-"],
+html:not(.dark) [class*=" text-rose-"] {
+  color: var(--color-accent-b) !important;
+}
+
+/* Border color normalization (light mode only) */
+html:not(.dark) [class^="border-indigo-"],
+html:not(.dark) [class*=" border-indigo-"],
+html:not(.dark) [class^="border-violet-"],
+html:not(.dark) [class*=" border-violet-"],
+html:not(.dark) [class^="border-fuchsia-"],
+html:not(.dark) [class*=" border-fuchsia-"] {
+  border-color: color-mix(in srgb, var(--color-main) 35%, white) !important;
+}
+
+html:not(.dark) [class^="border-cyan-"],
+html:not(.dark) [class*=" border-cyan-"],
+html:not(.dark) [class^="border-teal-"],
+html:not(.dark) [class*=" border-teal-"],
+html:not(.dark) [class^="border-emerald-"],
+html:not(.dark) [class*=" border-emerald-"] {
+  border-color: color-mix(in srgb, var(--color-secondary) 35%, white) !important;
+}
+
+html:not(.dark) [class^="border-orange-"],
+html:not(.dark) [class*=" border-orange-"],
+html:not(.dark) [class^="border-amber-"],
+html:not(.dark) [class*=" border-amber-"],
+html:not(.dark) [class^="border-yellow-"],
+html:not(.dark) [class*=" border-yellow-"] {
+  border-color: color-mix(in srgb, var(--color-accent-a) 35%, white) !important;
+}
+
+html:not(.dark) [class^="border-pink-"],
+html:not(.dark) [class*=" border-pink-"],
+html:not(.dark) [class^="border-rose-"],
+html:not(.dark) [class*=" border-rose-"] {
+  border-color: color-mix(in srgb, var(--color-accent-b) 35%, white) !important;
+}
+
+/* Background color normalization (light mode only) */
+html:not(.dark) [class^="bg-indigo-"],
+html:not(.dark) [class*=" bg-indigo-"],
+html:not(.dark) [class^="bg-violet-"],
+html:not(.dark) [class*=" bg-violet-"],
+html:not(.dark) [class^="bg-fuchsia-"],
+html:not(.dark) [class*=" bg-fuchsia-"] {
+  background-color: color-mix(in srgb, var(--color-main) 16%, white) !important;
+}
+
+html:not(.dark) [class^="bg-cyan-"],
+html:not(.dark) [class*=" bg-cyan-"],
+html:not(.dark) [class^="bg-teal-"],
+html:not(.dark) [class*=" bg-teal-"],
+html:not(.dark) [class^="bg-emerald-"],
+html:not(.dark) [class*=" bg-emerald-"] {
+  background-color: color-mix(in srgb, var(--color-secondary) 16%, white) !important;
+}
+
+html:not(.dark) [class^="bg-orange-"],
+html:not(.dark) [class*=" bg-orange-"],
+html:not(.dark) [class^="bg-amber-"],
+html:not(.dark) [class*=" bg-amber-"],
+html:not(.dark) [class^="bg-yellow-"],
+html:not(.dark) [class*=" bg-yellow-"] {
+  background-color: color-mix(in srgb, var(--color-accent-a) 16%, white) !important;
+}
+
+html:not(.dark) [class^="bg-pink-"],
+html:not(.dark) [class*=" bg-pink-"],
+html:not(.dark) [class^="bg-rose-"],
+html:not(.dark) [class*=" bg-rose-"] {
+  background-color: color-mix(in srgb, var(--color-accent-b) 16%, white) !important;
+}
+
+/* Gradient stop normalization (light mode only) */
+html:not(.dark) [class^="from-indigo-"],
+html:not(.dark) [class*=" from-indigo-"],
+html:not(.dark) [class^="from-violet-"],
+html:not(.dark) [class*=" from-violet-"],
+html:not(.dark) [class^="from-fuchsia-"],
+html:not(.dark) [class*=" from-fuchsia-"] {
+  --tw-gradient-from: var(--color-main) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: color-mix(in srgb, var(--color-main) 0%, transparent) var(--tw-gradient-to-position) !important;
+}
+
+html:not(.dark) [class^="via-indigo-"],
+html:not(.dark) [class*=" via-indigo-"],
+html:not(.dark) [class^="via-violet-"],
+html:not(.dark) [class*=" via-violet-"],
+html:not(.dark) [class^="via-fuchsia-"],
+html:not(.dark) [class*=" via-fuchsia-"] {
+  --tw-gradient-via: var(--color-main) var(--tw-gradient-via-position) !important;
+}
+
+html:not(.dark) [class^="to-indigo-"],
+html:not(.dark) [class*=" to-indigo-"],
+html:not(.dark) [class^="to-violet-"],
+html:not(.dark) [class*=" to-violet-"],
+html:not(.dark) [class^="to-fuchsia-"],
+html:not(.dark) [class*=" to-fuchsia-"] {
+  --tw-gradient-to: var(--color-main) var(--tw-gradient-to-position) !important;
+}
+
+html:not(.dark) [class^="from-cyan-"],
+html:not(.dark) [class*=" from-cyan-"],
+html:not(.dark) [class^="from-teal-"],
+html:not(.dark) [class*=" from-teal-"],
+html:not(.dark) [class^="from-emerald-"],
+html:not(.dark) [class*=" from-emerald-"] {
+  --tw-gradient-from: var(--color-secondary) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: color-mix(in srgb, var(--color-secondary) 0%, transparent) var(--tw-gradient-to-position) !important;
+}
+
+html:not(.dark) [class^="via-cyan-"],
+html:not(.dark) [class*=" via-cyan-"],
+html:not(.dark) [class^="via-teal-"],
+html:not(.dark) [class*=" via-teal-"],
+html:not(.dark) [class^="via-emerald-"],
+html:not(.dark) [class*=" via-emerald-"] {
+  --tw-gradient-via: var(--color-secondary) var(--tw-gradient-via-position) !important;
+}
+
+html:not(.dark) [class^="to-cyan-"],
+html:not(.dark) [class*=" to-cyan-"],
+html:not(.dark) [class^="to-teal-"],
+html:not(.dark) [class*=" to-teal-"],
+html:not(.dark) [class^="to-emerald-"],
+html:not(.dark) [class*=" to-emerald-"] {
+  --tw-gradient-to: var(--color-secondary) var(--tw-gradient-to-position) !important;
+}
+
+html:not(.dark) [class^="from-orange-"],
+html:not(.dark) [class*=" from-orange-"],
+html:not(.dark) [class^="from-amber-"],
+html:not(.dark) [class*=" from-amber-"],
+html:not(.dark) [class^="from-yellow-"],
+html:not(.dark) [class*=" from-yellow-"] {
+  --tw-gradient-from: var(--color-accent-a) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: color-mix(in srgb, var(--color-accent-a) 0%, transparent) var(--tw-gradient-to-position) !important;
+}
+
+html:not(.dark) [class^="via-orange-"],
+html:not(.dark) [class*=" via-orange-"],
+html:not(.dark) [class^="via-amber-"],
+html:not(.dark) [class*=" via-amber-"],
+html:not(.dark) [class^="via-yellow-"],
+html:not(.dark) [class*=" via-yellow-"] {
+  --tw-gradient-via: var(--color-accent-a) var(--tw-gradient-via-position) !important;
+}
+
+html:not(.dark) [class^="to-orange-"],
+html:not(.dark) [class*=" to-orange-"],
+html:not(.dark) [class^="to-amber-"],
+html:not(.dark) [class*=" to-amber-"],
+html:not(.dark) [class^="to-yellow-"],
+html:not(.dark) [class*=" to-yellow-"] {
+  --tw-gradient-to: var(--color-accent-a) var(--tw-gradient-to-position) !important;
+}
+
+html:not(.dark) [class^="from-pink-"],
+html:not(.dark) [class*=" from-pink-"],
+html:not(.dark) [class^="from-rose-"],
+html:not(.dark) [class*=" from-rose-"] {
+  --tw-gradient-from: var(--color-accent-b) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: color-mix(in srgb, var(--color-accent-b) 0%, transparent) var(--tw-gradient-to-position) !important;
+}
+
+html:not(.dark) [class^="via-pink-"],
+html:not(.dark) [class*=" via-pink-"],
+html:not(.dark) [class^="via-rose-"],
+html:not(.dark) [class*=" via-rose-"] {
+  --tw-gradient-via: var(--color-accent-b) var(--tw-gradient-via-position) !important;
+}
+
+html:not(.dark) [class^="to-pink-"],
+html:not(.dark) [class*=" to-pink-"],
+html:not(.dark) [class^="to-rose-"],
+html:not(.dark) [class*=" to-rose-"] {
+  --tw-gradient-to: var(--color-accent-b) var(--tw-gradient-to-position) !important;
+}
+
+/* Accent + ring normalization (light mode only) */
+html:not(.dark) [class^="accent-indigo-"],
+html:not(.dark) [class*=" accent-indigo-"],
+html:not(.dark) [class^="accent-violet-"],
+html:not(.dark) [class*=" accent-violet-"],
+html:not(.dark) [class^="accent-fuchsia-"],
+html:not(.dark) [class*=" accent-fuchsia-"] {
+  accent-color: var(--color-main) !important;
+}
+
+html:not(.dark) [class^="accent-cyan-"],
+html:not(.dark) [class*=" accent-cyan-"],
+html:not(.dark) [class^="accent-teal-"],
+html:not(.dark) [class*=" accent-teal-"],
+html:not(.dark) [class^="accent-emerald-"],
+html:not(.dark) [class*=" accent-emerald-"] {
+  accent-color: var(--color-secondary) !important;
+}
+
+html:not(.dark) [class^="accent-orange-"],
+html:not(.dark) [class*=" accent-orange-"],
+html:not(.dark) [class^="accent-amber-"],
+html:not(.dark) [class*=" accent-amber-"],
+html:not(.dark) [class^="accent-yellow-"],
+html:not(.dark) [class*=" accent-yellow-"] {
+  accent-color: var(--color-accent-a) !important;
+}
+
+html:not(.dark) [class^="accent-pink-"],
+html:not(.dark) [class*=" accent-pink-"],
+html:not(.dark) [class^="accent-rose-"],
+html:not(.dark) [class*=" accent-rose-"] {
+  accent-color: var(--color-accent-b) !important;
+}
+
+html:not(.dark) [class*="ring-indigo-"],
+html:not(.dark) [class*="focus-visible:ring-indigo-"] {
+  --tw-ring-color: var(--color-main) !important;
+}
+
+html:not(.dark) [class*="ring-cyan-"],
+html:not(.dark) [class*="ring-teal-"],
+html:not(.dark) [class*="focus-visible:ring-cyan-"],
+html:not(.dark) [class*="focus-visible:ring-teal-"] {
+  --tw-ring-color: var(--color-secondary) !important;
+}
+
+html:not(.dark) [class*="ring-orange-"],
+html:not(.dark) [class*="ring-amber-"],
+html:not(.dark) [class*="focus-visible:ring-orange-"],
+html:not(.dark) [class*="focus-visible:ring-amber-"] {
+  --tw-ring-color: var(--color-accent-a) !important;
+}
+
+html:not(.dark) [class*="ring-pink-"],
+html:not(.dark) [class*="ring-rose-"],
+html:not(.dark) [class*="focus-visible:ring-pink-"],
+html:not(.dark) [class*="focus-visible:ring-rose-"] {
+  --tw-ring-color: var(--color-accent-b) !important;
+}
+
+input,
+select,
+textarea {
+  border-color: color-mix(in srgb, var(--color-main) 25%, white) !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: color-mix(in srgb, var(--color-main) 70%, black) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-main) 22%, transparent);
+}
+
+a,
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.dark body {
+  background: #0b1020;
+  color: #e2e8f0;
+}
+
+/* Force deep dark surfaces on Landing dashboard sections */
+html.dark .landing-control-deck {
+  background-color: #0f172a !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+}
+
+html.dark .landing-stat-card {
+  background-color: rgba(30, 41, 59, 0.88) !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+html.dark .landing-draft-panel,
+html.dark .landing-launch-panel,
+html.dark .landing-students-panel,
+html.dark .landing-classes-panel {
+  background-color: rgba(15, 23, 42, 0.82) !important;
+  border-color: rgba(99, 102, 241, 0.32) !important;
+}
+
+html.dark .landing-launch-link,
+html.dark .landing-student-row,
+html.dark .landing-class-row {
+  background: rgba(30, 41, 59, 0.86) !important;
+  border-color: rgba(148, 163, 184, 0.32) !important;
+}
+
+html.dark body::before {
+  background:
+    radial-gradient(64vmax 62vmax at 8% 12%, rgba(99, 102, 241, 0.28), transparent 72%),
+    radial-gradient(66vmax 62vmax at 90% 16%, rgba(14, 165, 233, 0.24), transparent 74%),
+    radial-gradient(70vmax 62vmax at 20% 92%, rgba(245, 158, 11, 0.18), transparent 76%),
+    radial-gradient(62vmax 60vmax at 86% 82%, rgba(244, 63, 94, 0.16), transparent 76%),
+    linear-gradient(180deg, #0d1326 0%, #0b1020 100%);
+}
+
+html.dark body::after {
+  opacity: 0.12;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(226, 232, 240, 0.08) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(90deg, rgba(226, 232, 240, 0.06) 0 1px, transparent 1px 6px);
+}
+
+html.dark [class*="bg-white/80"],
+html.dark [class*="bg-white/75"],
+html.dark [class*="bg-white"] {
+  background-color: rgba(28, 24, 52, 0.8) !important;
+}
+
+html.dark [class*="bg-slate-50"],
+html.dark [class*="bg-slate-100"] {
+  background-color: rgba(44, 38, 78, 0.7) !important;
+}
+
+html.dark [class*="bg-white"] {
+  background-color: rgba(15, 23, 42, 0.86) !important;
+}
+
+html.dark [class*="bg-slate-50"] {
+  background-color: rgba(30, 41, 59, 0.86) !important;
+}
+
+html.dark [class*="bg-slate-100"] {
+  background-color: rgba(51, 65, 85, 0.88) !important;
+}
+
+html.dark [class*="border-slate-200"],
+html.dark [class*="border-white/60"],
+html.dark [class*="border-white/50"],
+html.dark [class*="border-dashed"] {
+  border-color: rgba(148, 163, 184, 0.3) !important;
+}
+
+html.dark [class*="text-slate-950"] {
+  color: #f8fafc !important;
+}
+
+html.dark [class*="text-slate-800"],
+html.dark [class*="text-slate-700"],
+html.dark [class*="text-slate-600"],
+html.dark [class*="text-slate-500"],
+html.dark [class*="text-slate-400"] {
+  color: #cbd5e1 !important;
+}
+
+html.dark [class*="bg-slate-950"] {
+  background-color: #0f172a !important;
+}
+
+html.dark [class*="text-emerald-800"] {
+  color: color-mix(in srgb, var(--color-secondary) 58%, white) !important;
+}
+
+html.dark [class*="text-rose-700"] {
+  color: color-mix(in srgb, var(--color-accent-b) 58%, white) !important;
+}
+
+html.dark [class*="bg-teal-700"] {
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-secondary) 75%, white),
+    var(--color-secondary)
+  );
+  background-color: var(--color-secondary) !important;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  border-color: color-mix(in srgb, var(--color-main) 36%, white) !important;
+}
+
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  border-color: color-mix(in srgb, var(--color-main) 65%, white) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-main) 28%, transparent);
+}
+
+.theme-toggle {
+  transition: transform 180ms ease, box-shadow 220ms ease;
+}
+
+.theme-toggle:hover {
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.2);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body::before {
+    animation: ambientPulse 14s ease-in-out infinite alternate;
+  }
+
+  main {
+    animation: pageReveal 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  main > * {
+    animation: itemRise 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  main > *:nth-child(2) {
+    animation-delay: 45ms;
+  }
+
+  main > *:nth-child(3) {
+    animation-delay: 90ms;
+  }
+
+  main > *:nth-child(4) {
+    animation-delay: 135ms;
+  }
+
+  a[class],
+  button,
+  input,
+  select,
+  textarea {
+    transition:
+      transform 160ms ease,
+      box-shadow 220ms ease,
+      background-color 220ms ease,
+      border-color 220ms ease,
+      color 220ms ease;
+  }
+
+  a[class]:hover,
+  button:hover {
+    transform: translateY(-1px);
+  }
+
+  .theme-toggle:hover .theme-toggle-thumb {
+    animation: toggleBob 850ms ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes ambientPulse {
+  from {
+    opacity: 0.9;
+    filter: saturate(104%);
+  }
+
+  to {
+    opacity: 1;
+    filter: saturate(118%);
+  }
+}
+
+@keyframes pageReveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes itemRise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toggleBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-2px);
+  }
 }

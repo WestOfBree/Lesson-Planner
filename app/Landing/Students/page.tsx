@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Navbar from "../../UI/Navbar";
-import StudentProfile from "../../UI/StudentProfile";
+import StudentCard from "../../UI/StudentCard";
 import { useCoachApp } from "../../lib/coach-store";
 
 const splitValues = (value: string) =>
@@ -11,13 +11,17 @@ const splitValues = (value: string) =>
     .map((entry) => entry.trim())
     .filter(Boolean);
 
-export default function StudentPage() {
+const levelOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper Intermediate", "Advanced"];
+
+export default function StudentsPage() {
   const { classes, students, addStudent, updateStudentProgress } = useCoachApp();
   const [name, setName] = useState("");
   const [level, setLevel] = useState("Beginner");
   const [focus, setFocus] = useState("");
   const [notes, setNotes] = useState("");
   const [goals, setGoals] = useState("");
+  const [skillsKnown, setSkillsKnown] = useState("");
+  const [struggles, setStruggles] = useState("");
   const [progress, setProgress] = useState(30);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
 
@@ -46,6 +50,8 @@ export default function StudentPage() {
                 notes,
                 classIds: selectedClassIds,
                 goals: splitValues(goals),
+                skillsKnown: splitValues(skillsKnown),
+                struggles: splitValues(struggles),
                 progress,
               });
               setName("");
@@ -53,6 +59,8 @@ export default function StudentPage() {
               setFocus("");
               setNotes("");
               setGoals("");
+              setSkillsKnown("");
+              setStruggles("");
               setProgress(30);
               setSelectedClassIds([]);
             }}
@@ -73,13 +81,17 @@ export default function StudentPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block space-y-2">
                   <span className="text-sm font-medium text-slate-700">Level</span>
-                  <input
-                    type="text"
+                  <select
                     value={level}
                     onChange={(event) => setLevel(event.target.value)}
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-teal-600 focus:bg-white"
-                    placeholder="Beginner"
-                  />
+                  >
+                    {levelOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </label>
 
                 <label className="block space-y-2">
@@ -102,6 +114,28 @@ export default function StudentPage() {
                   onChange={(event) => setGoals(event.target.value)}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
                   placeholder="Stronger hollow, smoother climbs, more endurance"
+                />
+              </label>
+
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-slate-700">Skills known</span>
+                <input
+                  type="text"
+                  value={skillsKnown}
+                  onChange={(event) => setSkillsKnown(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
+                  placeholder="Hip key, foot locks, basic climb"
+                />
+              </label>
+
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-slate-700">Current struggles</span>
+                <input
+                  type="text"
+                  value={struggles}
+                  onChange={(event) => setStruggles(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
+                  placeholder="Inversion strength, endurance, sequencing"
                 />
               </label>
 
@@ -175,7 +209,7 @@ export default function StudentPage() {
           <section className="space-y-4">
             {students.length ? (
               students.map((student) => (
-                <StudentProfile
+                <StudentCard
                   key={student.id}
                   student={student}
                   classes={classes}

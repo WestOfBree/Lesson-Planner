@@ -3,9 +3,9 @@ import LoginModule from "./UI/LoginModule";
 export default function Home() {
   return (
     <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
-      <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-7xl items-center justify-center gap-10 rounded-[2rem] border border-white/50 bg-white/70 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.12)] backdrop-blur xl:p-10">
-        <section className="hidden max-w-xl flex-1 rounded-[1.75rem] bg-[linear-gradient(145deg,#0f766e,#10212b)] p-10 text-white lg:block">
-          <p className="text-sm uppercase tracking-[0.4em] text-white/70">Aerial Coach</p>
+      <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-7xl items-center justify-center gap-10 rounded-4xl border border-pink-200/70 bg-white/75 p-6 shadow-[0_28px_90px_rgba(190,24,93,0.18)] backdrop-blur xl:p-10">
+        <section className="hidden max-w-xl flex-1 rounded-[1.75rem] bg-linear-to-br from-pink-600 via-rose-500 to-sky-500 p-10 text-white lg:block">
+          <p className="text-sm uppercase tracking-[0.4em] text-white/75">Aerial Coach</p>
           <h1 className="mt-6 text-5xl font-semibold leading-tight">
             Lesson planning, class management, and student progress in one workspace.
           </h1>
@@ -14,11 +14,11 @@ export default function Home() {
             and track progress without jumping between different tools.
           </p>
           <div className="mt-10 grid grid-cols-2 gap-4 text-sm text-white/85">
-            <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+            <div className="rounded-2xl border border-white/30 bg-white/18 p-4 backdrop-blur">
               <p className="text-2xl font-semibold">2</p>
               <p className="mt-1">Custom libraries ready to grow</p>
             </div>
-            <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+            <div className="rounded-2xl border border-white/30 bg-white/18 p-4 backdrop-blur">
               <p className="text-2xl font-semibold">1</p>
               <p className="mt-1">Shared coach dashboard</p>
             </div>

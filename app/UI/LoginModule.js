@@ -26,15 +26,15 @@ export default function LoginModule() {
 
   if (isRegisterMode) {
     return (
-      <div className="w-full rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-[0_15px_40px_rgba(15,23,42,0.08)]">
+      <div className="w-full rounded-[1.75rem] border border-pink-200/70 bg-white/85 p-8 shadow-[0_18px_45px_rgba(190,24,93,0.16)] backdrop-blur">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-teal-700">Register</p>
+            <p className="text-sm uppercase tracking-[0.3em] text-pink-700">Register</p>
             <h2 className="mt-2 text-3xl font-semibold text-slate-950">Create your coach workspace</h2>
           </div>
           <button
             type="button"
-            className="cursor-pointer rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            className="cursor-pointer rounded-full border border-pink-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-pink-300 hover:bg-pink-50"
             onClick={() => {
               setShowPassword(false);
               setIsRegisterMode(false);
@@ -58,7 +58,7 @@ export default function LoginModule() {
               placeholder="coach@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
+              className="w-full rounded-2xl border border-pink-200/70 bg-pink-50/55 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-pink-500 focus:bg-white"
               required
             />
           </label>
@@ -70,13 +70,13 @@ export default function LoginModule() {
                 placeholder="Create a password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
+                className="w-full rounded-2xl border border-pink-200/70 bg-pink-50/55 px-4 py-3 pr-12 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-pink-500 focus:bg-white"
                 required
               />
               <button
                 type="button"
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="cursor-pointer absolute inset-y-0 right-3 flex items-center text-teal-700 transition hover:text-teal-800"
+                className="cursor-pointer absolute inset-y-0 right-3 flex items-center text-pink-700 transition hover:text-pink-800"
                 onClick={() => setShowPassword((current) => !current)}
               >
                 <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
@@ -86,7 +86,7 @@ export default function LoginModule() {
           <div className="mt-2 flex items-center gap-3">
             <button
               type="submit"
-              className="cursor-pointer w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800"
+              className="cursor-pointer w-full rounded-2xl bg-linear-to-r from-pink-600 to-rose-500 px-4 py-3 font-semibold text-white transition hover:from-pink-700 hover:to-rose-600"
             >
               Register and continue
             </button>
@@ -98,10 +98,10 @@ export default function LoginModule() {
   }
 
   return (
-    <div className="w-full rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-[0_15px_40px_rgba(15,23,42,0.08)]">
+    <div className="w-full rounded-[1.75rem] border border-pink-200/70 bg-white/85 p-8 shadow-[0_18px_45px_rgba(190,24,93,0.16)] backdrop-blur">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-[0.3em] text-teal-700">Welcome back</p>
+          <p className="text-sm uppercase tracking-[0.3em] text-pink-700">Welcome back</p>
           <h2 className="mt-2 text-3xl font-semibold text-slate-950">Sign in to Aerial Coach</h2>
           <p className="mt-3 max-w-md text-sm leading-6 text-slate-600">
             Use a guest session to explore the workspace, or sign in with your email to keep your lesson plan and rosters together.
@@ -109,7 +109,7 @@ export default function LoginModule() {
         </div>
         <button
           type="button"
-          className="cursor-pointer rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+          className="cursor-pointer rounded-full border border-pink-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-pink-300 hover:bg-pink-50"
           onClick={() => {
             setShowPassword(false);
             setIsRegisterMode(true);
@@ -122,7 +122,7 @@ export default function LoginModule() {
       <div className="mt-8 space-y-4">
         <button
           type="button"
-          className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-slate-950 px-4 py-3 font-semibold text-white transition hover:bg-slate-800"
+          className="flex w-full items-center justify-center gap-3 rounded-2xl border border-pink-300/60 bg-linear-to-r from-fuchsia-700 via-pink-600 to-rose-500 px-4 py-3 font-semibold text-white transition hover:from-fuchsia-800 hover:via-pink-700 hover:to-rose-600"
           onClick={() => submitSession("guest")}
         >
           Continue as a guest coach
@@ -148,7 +148,7 @@ export default function LoginModule() {
               placeholder="coach@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
+              className="w-full rounded-2xl border border-pink-200/70 bg-pink-50/55 px-4 py-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-pink-500 focus:bg-white"
               required
             />
           </label>
@@ -161,13 +161,13 @@ export default function LoginModule() {
                 placeholder="Your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:bg-white"
+                className="w-full rounded-2xl border border-pink-200/70 bg-pink-50/55 px-4 py-3 pr-12 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-pink-500 focus:bg-white"
                 required
               />
               <button
                 type="button"
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="cursor-pointer absolute inset-y-0 right-3 flex items-center text-teal-700 transition hover:text-teal-800"
+                className="cursor-pointer absolute inset-y-0 right-3 flex items-center text-pink-700 transition hover:text-pink-800"
                 onClick={() => setShowPassword((current) => !current)}
               >
                 <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
@@ -181,7 +181,7 @@ export default function LoginModule() {
 
           <button
             type="submit"
-            className="w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800"
+            className="w-full rounded-2xl bg-linear-to-r from-pink-600 to-rose-500 px-4 py-3 font-semibold text-white transition hover:from-pink-700 hover:to-rose-600"
           >
             Sign in
           </button>
