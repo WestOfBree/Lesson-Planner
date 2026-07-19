@@ -34,11 +34,13 @@ import {
   slugify,
   type CoachClassData,
   type CoachSession,
-  type LessonPlanState,
   type LibraryItem,
+  type LessonPlanState,
   type NewClassInput,
   type NewLessonPlanInput,
   type NewLibraryItemInput,
+  type NewSkillLibraryItemInput,
+  type SkillLibraryItem,
   type NewStudentInput,
   type StudentProfileData,
   type UpdateLessonPlanInput,
@@ -58,7 +60,9 @@ type CoachState = {
   students: StudentProfileData[];
   classes: CoachClassData[];
   conditioningExercises: LibraryItem[];
-  skillExercises: LibraryItem[];
+  deletedConditioningExerciseIds: string[];
+  skillExercises: SkillLibraryItem[];
+  deletedSkillExerciseIds: string[];
   assignedLessonPlans: AssignedLessonPlan[];
   lessonPlan: LessonPlanState;
 };
@@ -98,8 +102,8 @@ type CoachStore = CoachState & {
   addConditioningExercise: (input: NewLibraryItemInput) => LibraryItem;
   updateConditioningExercise: (exerciseId: string, input: NewLibraryItemInput) => void;
   deleteConditioningExercise: (exerciseId: string) => void;
-  addSkillExercise: (input: NewLibraryItemInput) => LibraryItem;
-  updateSkillExercise: (exerciseId: string, input: NewLibraryItemInput) => void;
+  addSkillExercise: (input: NewSkillLibraryItemInput) => SkillLibraryItem;
+  updateSkillExercise: (exerciseId: string, input: NewSkillLibraryItemInput) => void;
   deleteSkillExercise: (exerciseId: string) => void;
   assignLessonPlanToClass: (input: NewLessonPlanInput) => AssignedLessonPlan;
   updateAssignedLessonPlan: (lessonPlanId: string, input: UpdateLessonPlanInput) => AssignedLessonPlan;
@@ -115,7 +119,9 @@ let cachedState: CoachState = {
   students: [],
   classes: [],
   conditioningExercises: defaultConditioningExercises,
+  deletedConditioningExerciseIds: [],
   skillExercises: defaultSkillExercises,
+  deletedSkillExerciseIds: [],
   assignedLessonPlans: [],
   lessonPlan: {
     conditioningIds: [],
@@ -149,14 +155,19 @@ const normalizeLessonPlan = (plan: AssignedLessonPlan): AssignedLessonPlan => ({
   outcomeNotes: plan.outcomeNotes ?? "",
 });
 
-const mergeLibraryItems = (defaults: LibraryItem[], stored: LibraryItem[] | undefined): LibraryItem[] => {
+const mergeLibraryItems = <T extends { id: string }>(
+  defaults: T[],
+  stored: T[] | undefined,
+  deletedIds: string[] | undefined,
+): T[] => {
   const merged = new Map(defaults.map((item) => [item.id, item]));
+  const deletedIdSet = new Set(deletedIds ?? []);
 
   (stored ?? []).forEach((item) => {
     merged.set(item.id, item);
   });
 
-  return Array.from(merged.values());
+  return Array.from(merged.values()).filter((item) => !deletedIdSet.has(item.id));
 };
 
 const normalizeStudent = (student: StudentProfileData): StudentProfileData => {
@@ -197,8 +208,18 @@ const normalizeStudent = (student: StudentProfileData): StudentProfileData => {
 const mergeState = (value: Partial<CoachState> | null | undefined): CoachState => ({
   ...cachedState,
   ...value,
-  conditioningExercises: mergeLibraryItems(defaultConditioningExercises, value?.conditioningExercises ?? cachedState.conditioningExercises),
-  skillExercises: mergeLibraryItems(defaultSkillExercises, value?.skillExercises ?? cachedState.skillExercises),
+  deletedConditioningExerciseIds: value?.deletedConditioningExerciseIds ?? cachedState.deletedConditioningExerciseIds,
+  deletedSkillExerciseIds: value?.deletedSkillExerciseIds ?? cachedState.deletedSkillExerciseIds,
+  conditioningExercises: mergeLibraryItems(
+    defaultConditioningExercises,
+    value?.conditioningExercises ?? cachedState.conditioningExercises,
+    value?.deletedConditioningExerciseIds ?? cachedState.deletedConditioningExerciseIds,
+  ),
+  skillExercises: mergeLibraryItems(
+    defaultSkillExercises,
+    value?.skillExercises ?? cachedState.skillExercises,
+    value?.deletedSkillExerciseIds ?? cachedState.deletedSkillExerciseIds,
+  ),
   students: value?.students?.map((student) => normalizeStudent(student)) ?? cachedState.students,
   classes: value?.classes ?? cachedState.classes,
   assignedLessonPlans: value?.assignedLessonPlans?.map((plan) => normalizeLessonPlan(plan)) ?? cachedState.assignedLessonPlans,
@@ -229,7 +250,9 @@ const serializeState = (state: CoachState): PersistedCoachState => ({
   students: state.students,
   classes: state.classes,
   conditioningExercises: state.conditioningExercises,
+  deletedConditioningExerciseIds: state.deletedConditioningExerciseIds,
   skillExercises: state.skillExercises,
+  deletedSkillExerciseIds: state.deletedSkillExerciseIds,
   assignedLessonPlans: state.assignedLessonPlans,
   lessonPlan: state.lessonPlan,
   updatedAt: serverTimestamp(),
@@ -274,7 +297,9 @@ const ensureInitialized = () => {
         students: [],
         classes: [],
         conditioningExercises: defaultConditioningExercises,
+        deletedConditioningExerciseIds: [],
         skillExercises: defaultSkillExercises,
+        deletedSkillExerciseIds: [],
         assignedLessonPlans: [],
         lessonPlan: {
           conditioningIds: [],
@@ -309,7 +334,9 @@ const ensureInitialized = () => {
             students: data?.students,
             classes: data?.classes,
             conditioningExercises: data?.conditioningExercises,
+            deletedConditioningExerciseIds: data?.deletedConditioningExerciseIds,
             skillExercises: data?.skillExercises,
+            deletedSkillExerciseIds: data?.deletedSkillExerciseIds,
             assignedLessonPlans: data?.assignedLessonPlans,
             lessonPlan: data?.lessonPlan,
           });
@@ -349,7 +376,7 @@ const getSnapshot = () => {
   return cachedState;
 };
 
-const normalizeItem = (input: NewLibraryItemInput, category: string): LibraryItem => ({
+const normalizeConditioningItem = (input: NewLibraryItemInput, category: string): LibraryItem => ({
   id: createId("item"),
   slug: slugify(input.title),
   title: input.title,
@@ -361,6 +388,18 @@ const normalizeItem = (input: NewLibraryItemInput, category: string): LibraryIte
   coachingCues: unique(input.coachingCues),
   progressions: unique(input.progressions),
   regressions: unique(input.regressions),
+  lessonUse: input.lessonUse,
+  isCustom: true,
+});
+
+const normalizeSkillItem = (input: NewSkillLibraryItemInput): SkillLibraryItem => ({
+  id: createId("item"),
+  slug: slugify(input.title),
+  title: input.title,
+  category: "Aerial Skill",
+  description: input.description,
+  difficulty: input.difficulty,
+  coachingCues: unique(input.coachingCues),
   lessonUse: input.lessonUse,
   isCustom: true,
 });
@@ -765,10 +804,11 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addConditioningExercise = (input: NewLibraryItemInput) => {
-    const item = normalizeItem(input, "Conditioning");
+    const item = normalizeConditioningItem(input, "Conditioning");
 
     persistState((current) => ({
       ...current,
+      deletedConditioningExerciseIds: current.deletedConditioningExerciseIds.filter((id) => id !== item.id),
       conditioningExercises: [item, ...current.conditioningExercises],
     }));
 
@@ -801,6 +841,7 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
   const deleteConditioningExercise = (exerciseId: string) => {
     persistState((current) => ({
       ...current,
+      deletedConditioningExerciseIds: unique([...current.deletedConditioningExerciseIds, exerciseId]),
       conditioningExercises: current.conditioningExercises.filter((item) => item.id !== exerciseId),
       assignedLessonPlans: current.assignedLessonPlans.map((plan) => {
         const nextConditioningReps = { ...(plan.conditioningReps ?? {}) };
@@ -819,18 +860,19 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
-  const addSkillExercise = (input: NewLibraryItemInput) => {
-    const item = normalizeItem(input, "Aerial Skill");
+  const addSkillExercise = (input: NewSkillLibraryItemInput) => {
+    const item = normalizeSkillItem(input);
 
     persistState((current) => ({
       ...current,
+      deletedSkillExerciseIds: current.deletedSkillExerciseIds.filter((id) => id !== item.id),
       skillExercises: [item, ...current.skillExercises],
     }));
 
     return item;
   };
 
-  const updateSkillExercise = (exerciseId: string, input: NewLibraryItemInput) => {
+  const updateSkillExercise = (exerciseId: string, input: NewSkillLibraryItemInput) => {
     persistState((current) => ({
       ...current,
       skillExercises: current.skillExercises.map((item) =>
@@ -841,11 +883,7 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
               title: input.title.trim(),
               description: input.description.trim(),
               difficulty: input.difficulty.trim(),
-              duration: input.duration.trim(),
-              equipment: unique(input.equipment),
               coachingCues: unique(input.coachingCues),
-              progressions: unique(input.progressions),
-              regressions: unique(input.regressions),
               lessonUse: input.lessonUse.trim(),
             }
           : item,
@@ -856,6 +894,7 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
   const deleteSkillExercise = (exerciseId: string) => {
     persistState((current) => ({
       ...current,
+      deletedSkillExerciseIds: unique([...current.deletedSkillExerciseIds, exerciseId]),
       skillExercises: current.skillExercises.filter((item) => item.id !== exerciseId),
       assignedLessonPlans: current.assignedLessonPlans.map((plan) => ({
         ...plan,

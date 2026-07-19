@@ -4,7 +4,7 @@ import { useState } from "react";
 import Navbar from "../../UI/Navbar";
 import SkillCard from "../../UI/SkillCard";
 import { useCoachApp } from "@/app/lib/coach-store";
-import type { LibraryItem } from "@/app/lib/coach-data";
+import type { SkillLibraryItem } from "@/app/lib/coach-data";
 
 const splitValues = (value: string) =>
   value
@@ -56,11 +56,7 @@ export default function SkillsLibraryPage() {
                   title,
                   description,
                   difficulty,
-                  duration: "",
-                  equipment: [],
                   coachingCues: splitValues(coachingCues),
-                  progressions: [],
-                  regressions: [],
                   lessonUse,
                 });
                 setTitle("");
@@ -146,7 +142,7 @@ export default function SkillsLibraryPage() {
           </div>
 
           <section className={`grid gap-4 ${showCreateSkill ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
-            {skillExercises.map((item: LibraryItem) => (
+            {skillExercises.map((item: SkillLibraryItem) => (
               <SkillCard
                 key={item.id}
                 item={item}

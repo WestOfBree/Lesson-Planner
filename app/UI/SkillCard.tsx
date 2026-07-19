@@ -1,8 +1,8 @@
 import Link from "next/link";
-import type { LibraryItem } from "../lib/coach-data";
+import type { SkillLibraryItem } from "../lib/coach-data";
 
 interface SkillCardProps {
-  item: LibraryItem;
+  item: SkillLibraryItem;
   href: string;
   onAddToLessonPlan?: () => void;
   selected?: boolean;

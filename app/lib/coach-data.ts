@@ -63,6 +63,18 @@ export interface LibraryItem {
   isCustom: boolean;
 }
 
+export interface SkillLibraryItem {
+  id: string;
+  slug: string;
+  title: string;
+  category: string;
+  description: string;
+  difficulty: string;
+  coachingCues: string[];
+  lessonUse: string;
+  isCustom: boolean;
+}
+
 export interface LessonPlanState {
   conditioningIds: string[];
   skillIds: string[];
@@ -102,6 +114,14 @@ export interface NewLibraryItemInput {
   lessonUse: string;
 }
 
+export interface NewSkillLibraryItemInput {
+  title: string;
+  description: string;
+  difficulty: string;
+  coachingCues: string[];
+  lessonUse: string;
+}
+
 export interface NewLessonPlanInput {
   title: string;
   classId: string;
@@ -137,6 +157,13 @@ export const coachNameFromEmail = (email: string) => {
 };
 
 const createItem = (item: Omit<LibraryItem, "id" | "slug" | "isCustom">): LibraryItem => ({
+  ...item,
+  id: `item-${slugify(item.title)}`,
+  slug: slugify(item.title),
+  isCustom: false,
+});
+
+const createSkillItem = (item: Omit<SkillLibraryItem, "id" | "slug" | "isCustom">): SkillLibraryItem => ({
   ...item,
   id: `item-${slugify(item.title)}`,
   slug: slugify(item.title),
@@ -217,30 +244,6 @@ export const defaultConditioningExercises: LibraryItem[] = [
     lessonUse: "Supports cleaner side-body lines in aerial skills.",
   }),
   createItem({
-    title: "Glute Bridge",
-    category: "Conditioning",
-    description: "Posterior chain activation for better hip extension and low-back support.",
-    difficulty: "Beginner",
-    duration: "3 rounds of 12-20 reps",
-    equipment: ["Mat"],
-    coachingCues: ["Drive through heels", "Keep ribs down", "Pause at the top"],
-    progressions: ["Single-leg bridge", "Banded bridge"],
-    regressions: ["Short-range bridge", "Isometric bridge hold"],
-    lessonUse: "Ideal prep before beats, climbs, and dynamic transitions.",
-  }),
-  createItem({
-    title: "Dead Bug",
-    category: "Conditioning",
-    description: "Improves cross-body coordination and anti-extension core control.",
-    difficulty: "Beginner",
-    duration: "3 rounds of 8-12 reps per side",
-    equipment: ["Mat"],
-    coachingCues: ["Press back into mat", "Move slowly", "Exhale as limb extends"],
-    progressions: ["Banded dead bug", "Weighted dead bug"],
-    regressions: ["Heel taps", "Arm-only dead bug"],
-    lessonUse: "Excellent primer for invert mechanics and control.",
-  }),
-  createItem({
     title: "Superman Hold",
     category: "Conditioning",
     description: "Strengthens posterior chain and spinal extension endurance.",
@@ -265,7 +268,7 @@ export const defaultConditioningExercises: LibraryItem[] = [
     lessonUse: "Useful in warm-up circuits to raise heart rate quickly.",
   }),
   createItem({
-    title: "Bodyweight Squats",
+    title: "Squats",
     category: "Conditioning",
     description: "Foundational lower-body strength and control for grounded power.",
     difficulty: "Beginner",
@@ -300,79 +303,39 @@ export const defaultConditioningExercises: LibraryItem[] = [
     regressions: ["Bent-knee lifts", "Single-leg pike lifts"],
     lessonUse: "Direct carryover to controlled tuck and straddle inversions.",
   }),
-  createItem({
-    title: "Bent-Arm Hang",
-    category: "Conditioning",
-    description: "Grip and pulling endurance baseline for early aerial students.",
-    difficulty: "Beginner",
-    duration: "4 x 10-30 second holds",
-    equipment: ["Pull-up bar or silks"],
-    coachingCues: ["Keep shoulders active", "Chin neutral", "Breathe steadily"],
-    progressions: ["One-arm assisted hangs", "Longer hold duration"],
-    regressions: ["Foot-supported hold", "Active dead hang"],
-    lessonUse: "Great benchmark for pulling endurance development.",
-  }),
-  createItem({
-    title: "Scapular Push-Ups",
-    category: "Conditioning",
-    description: "Improves shoulder blade control and serratus engagement.",
-    difficulty: "Beginner",
-    duration: "3 rounds of 10-15 reps",
-    equipment: ["Floor"],
-    coachingCues: ["Keep elbows straight", "Protract and retract smoothly", "Control tempo"],
-    progressions: ["Plank scap push-ups", "Deficit scap push-ups"],
-    regressions: ["Wall scap push-ups", "Knee scap push-ups"],
-    lessonUse: "Preps shoulders for healthy loading in climbs and hangs.",
-  }),
 ];
 
-export const defaultSkillExercises: LibraryItem[] = [
-  createItem({
+export const defaultSkillExercises: SkillLibraryItem[] = [
+  createSkillItem({
     title: "Basic Invert",
     category: "Aerial Skill",
     description: "The core aerial skill that teaches momentum, compression, and a clean inversion pathway.",
     difficulty: "Intermediate",
-    duration: "5-8 focused attempts",
-    equipment: ["Silks"],
     coachingCues: ["Initiate from the core", "Stay tight through the feet", "Finish stacked and stable"],
-    progressions: ["Tuck invert with spot", "Slow negative invert"],
-    regressions: ["Chickens wing prep", "Seated compression drills"],
     lessonUse: "A reliable skill focus for developing body awareness and line control.",
   }),
-  createItem({
-    title: "Foot Lock Sequence",
+  createSkillItem({
+    title: "Footlocks",
     category: "Aerial Skill",
-    description: "A foundational silks transition that builds confidence with wraps, balance, and standing support.",
+    description: "Standard footlocks from the ground.",
     difficulty: "Beginner",
-    duration: "3-5 cycles each side",
-    equipment: ["Silks"],
-    coachingCues: ["Keep wraps tidy", "Check the tail before loading", "Stand with intention"],
-    progressions: ["Foot lock into pose", "Foot lock climb combo"],
-    regressions: ["Low wrap rehearsal", "Floor patterning"],
-    lessonUse: "Use as a transition drill when building sequencing confidence.",
+    coachingCues: ["Keep wraps tidy", "Wrap out and around", "Over then under"],
+    lessonUse: "Use as a transition skill when building sequencing confidence.",
   }),
-  createItem({
-    title: "Straddle Beat",
+  createSkillItem({
+    title: "Butterfly",
     category: "Aerial Skill",
-    description: "Dynamic beat patterning that feeds swings, tempo, and explosive aerial shapes.",
-    difficulty: "Intermediate",
-    duration: "4 sets of 6-10 beats",
-    equipment: ["Silks"],
-    coachingCues: ["Keep the chest open", "Drive the rhythm from the hips", "Land each beat cleanly"],
-    progressions: ["Beat holds", "Alternate beat timing"],
-    regressions: ["Tuck beats", "Floor rhythm drills"],
+    description: "A classic, beautiful pose where the aerialist is suspended upside down in a straddle with the silks creating a large 'X' across their lower back.",
+    difficulty: "Begintermediate",
+    coachingCues: ["Keep legs rotated outwards", "Engage the core for stability", "Maintain a strong line through the spine"],
     lessonUse: "Useful in warm-ups and as a prelude to dynamic skill work.",
   }),
-  createItem({
-    title: "Catchers Climb",
+  createSkillItem({
+    title: "Backfall",
     category: "Aerial Skill",
-    description: "A shape-and-strength climb that helps students connect pulling power with tidy body positions.",
-    difficulty: "Advanced Beginner",
-    duration: "3-6 controlled reps",
-    equipment: ["Silks"],
-    coachingCues: ["Pull before you step", "Keep the rope path close", "Stay organized through the torso"],
-    progressions: ["Slow tempo climb", "Climb with pauses"],
-    regressions: ["Foot assisted climb", "Standing rope pulls"],
+    description: "A dynamic move where the aerialist sits on a single cross of the fabric and falls backward, allowing the momentum to invert the body before catching oneself.",
+    difficulty: "Beginner",
+    coachingCues: ["Engage the core", "Control the descent", "Don't forget the arms"],
     lessonUse: "Builds endurance for longer sequences and stronger climbs.",
   }),
 ];

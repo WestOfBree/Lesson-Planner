@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import Navbar from "../../../UI/Navbar";
 import { useCoachApp } from "../../../lib/coach-store";
-import type { LibraryItem } from "../../../lib/coach-data";
+import type { SkillLibraryItem } from "../../../lib/coach-data";
 
 const splitValues = (value: string) =>
   value
@@ -21,7 +21,7 @@ export default function SkillDetailPage() {
   const searchParams = useSearchParams();
   const { skillExercises, lessonPlan, toggleLessonPlanItem, updateSkillExercise, deleteSkillExercise } = useCoachApp();
   const skill = useMemo(
-    () => skillExercises.find((item: LibraryItem) => item.slug === params.skillId || item.id === params.skillId),
+    () => skillExercises.find((item: SkillLibraryItem) => item.slug === params.skillId || item.id === params.skillId),
     [params.skillId, skillExercises],
   );
   const formDefaults = useMemo(
@@ -29,11 +29,7 @@ export default function SkillDetailPage() {
       title: skill?.title ?? "",
       description: skill?.description ?? "",
       difficulty: skill?.difficulty ?? "Beginner",
-      duration: skill?.duration ?? "",
-      equipment: skill?.equipment?.join(", ") ?? "",
       coachingCues: skill?.coachingCues?.join(", ") ?? "",
-      progressions: skill?.progressions?.join(", ") ?? "",
-      regressions: skill?.regressions?.join(", ") ?? "",
       lessonUse: skill?.lessonUse ?? "",
     }),
     [skill],
@@ -44,11 +40,7 @@ export default function SkillDetailPage() {
   const [title, setTitle] = useState(formDefaults.title);
   const [description, setDescription] = useState(formDefaults.description);
   const [difficulty, setDifficulty] = useState(formDefaults.difficulty);
-  const [duration, setDuration] = useState(formDefaults.duration);
-  const [equipment, setEquipment] = useState(formDefaults.equipment);
   const [coachingCues, setCoachingCues] = useState(formDefaults.coachingCues);
-  const [progressions, setProgressions] = useState(formDefaults.progressions);
-  const [regressions, setRegressions] = useState(formDefaults.regressions);
   const [lessonUse, setLessonUse] = useState(formDefaults.lessonUse);
 
   if (!skill) {
@@ -80,12 +72,6 @@ export default function SkillDetailPage() {
 
           <div className="mt-6 flex flex-wrap gap-2 text-sm text-slate-600">
             <span className="rounded-full bg-slate-100 px-3 py-1">{skill.difficulty}</span>
-            <span className="rounded-full bg-slate-100 px-3 py-1">{skill.duration}</span>
-            {skill.equipment.map((equipment) => (
-              <span key={equipment} className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-800">
-                {equipment}
-              </span>
-            ))}
           </div>
 
           <div className="mt-8 grid gap-6 sm:grid-cols-2">
@@ -103,25 +89,6 @@ export default function SkillDetailPage() {
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Lesson use</p>
               <p className="mt-3 text-sm leading-7 text-slate-600">{skill.lessonUse}</p>
-            </div>
-          </div>
-
-          <div className="mt-8 grid gap-6 sm:grid-cols-2">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Progressions</p>
-              <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                {skill.progressions.map((item) => (
-                  <li key={item} className="rounded-2xl bg-slate-50 px-4 py-3">{item}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Regressions</p>
-              <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                {skill.regressions.map((item) => (
-                  <li key={item} className="rounded-2xl bg-slate-50 px-4 py-3">{item}</li>
-                ))}
-              </ul>
             </div>
           </div>
         </section>
@@ -182,11 +149,7 @@ export default function SkillDetailPage() {
                   title,
                   description,
                   difficulty,
-                  duration,
-                  equipment: splitValues(equipment),
                   coachingCues: splitValues(coachingCues),
-                  progressions: splitValues(progressions),
-                  regressions: splitValues(regressions),
                   lessonUse,
                 });
                 setStatusMessage("Skill updated.");
@@ -220,38 +183,10 @@ export default function SkillDetailPage() {
               </select>
               <input
                 type="text"
-                value={duration}
-                onChange={(event) => setDuration(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
-                placeholder="Duration"
-              />
-              <input
-                type="text"
-                value={equipment}
-                onChange={(event) => setEquipment(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
-                placeholder="Equipment (comma separated)"
-              />
-              <input
-                type="text"
                 value={coachingCues}
                 onChange={(event) => setCoachingCues(event.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
                 placeholder="Coaching cues (comma separated)"
-              />
-              <input
-                type="text"
-                value={progressions}
-                onChange={(event) => setProgressions(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
-                placeholder="Progressions (comma separated)"
-              />
-              <input
-                type="text"
-                value={regressions}
-                onChange={(event) => setRegressions(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
-                placeholder="Regressions (comma separated)"
               />
               <textarea
                 value={lessonUse}
