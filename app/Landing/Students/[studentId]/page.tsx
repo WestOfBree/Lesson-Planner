@@ -41,6 +41,10 @@ export default function StudentProfilePage() {
     () =>
       assignedLessonPlans
         .filter((plan) => {
+          if (!student?.id) {
+            return false;
+          }
+
           if (!(student?.classIds ?? []).includes(plan.classId)) {
             return false;
           }
