@@ -20,11 +20,18 @@ import {
   type User,
 } from "firebase/auth";
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
+  limit,
   onSnapshot,
+  query,
   setDoc,
   serverTimestamp,
+  Timestamp,
+  where,
+  writeBatch,
 } from "firebase/firestore";
 import {
   type AssignedLessonPlan,
@@ -57,6 +64,8 @@ type CoachState = {
   currentCoach: CoachSession | null;
   isHydrating: boolean;
   hydrationError: string | null;
+  friends: CoachFriend[];
+  incomingFriendRequests: FriendRequest[];
   students: StudentProfileData[];
   classes: CoachClassData[];
   conditioningExercises: LibraryItem[];
@@ -71,11 +80,29 @@ type PersistedCoachState = Omit<CoachState, "currentCoach" | "isHydrating" | "hy
   updatedAt?: unknown;
 };
 
+type CoachDirectoryProfile = {
+  id: string;
+  email: string;
+  displayName: string;
+};
+
+type CoachFriend = CoachDirectoryProfile & {
+  addedAt: string;
+};
+
+type FriendRequest = CoachDirectoryProfile & {
+  requestedAt: string;
+};
+
 type CoachStore = CoachState & {
   signInCoach: (input: SignInInput) => Promise<CoachSession>;
   signOutCoach: () => void;
   updateCoachProfile: (input: { displayName: string; email: string }) => Promise<CoachSession>;
   changeCoachPassword: (input: { currentPassword: string; newPassword: string }) => Promise<void>;
+  searchCoachByEmail: (email: string) => Promise<CoachDirectoryProfile | null>;
+  sendFriendRequest: (friendId: string) => Promise<void>;
+  approveFriendRequest: (requesterId: string) => Promise<void>;
+  declineFriendRequest: (requesterId: string) => Promise<void>;
   addStudent: (input: NewStudentInput) => StudentProfileData;
   deleteStudent: (studentId: string) => void;
   updateStudent: (
@@ -116,6 +143,8 @@ let cachedState: CoachState = {
   currentCoach: null,
   isHydrating: true,
   hydrationError: null,
+  friends: [],
+  incomingFriendRequests: [],
   students: [],
   classes: [],
   conditioningExercises: defaultConditioningExercises,
@@ -130,6 +159,8 @@ let cachedState: CoachState = {
 };
 let initialized = false;
 let coachStateUnsubscribe: (() => void) | null = null;
+let friendsUnsubscribe: (() => void) | null = null;
+let incomingFriendRequestsUnsubscribe: (() => void) | null = null;
 
 const CoachContext = createContext<CoachStore | null>(null);
 
@@ -225,6 +256,7 @@ const mergeState = (value: Partial<CoachState> | null | undefined): CoachState =
   assignedLessonPlans: value?.assignedLessonPlans?.map((plan) => normalizeLessonPlan(plan)) ?? cachedState.assignedLessonPlans,
   lessonPlan: value?.lessonPlan ?? cachedState.lessonPlan,
   currentCoach: value?.currentCoach ?? cachedState.currentCoach,
+  incomingFriendRequests: value?.incomingFriendRequests ?? cachedState.incomingFriendRequests,
   isHydrating: value?.isHydrating ?? cachedState.isHydrating,
   hydrationError: value?.hydrationError ?? cachedState.hydrationError,
 });
@@ -241,12 +273,20 @@ const toSession = (user: User): CoachSession => {
 };
 
 const coachStateRef = (uid: string) => doc(db, "coachState", uid);
+const coachProfileRef = (uid: string) => doc(db, "coachProfiles", uid);
+const friendsCollectionRef = (uid: string) => collection(db, "coachProfiles", uid, "friends");
+const incomingFriendRequestsCollectionRef = (uid: string) => collection(db, "coachProfiles", uid, "friendRequests");
+const incomingFriendRequestRef = (uid: string, requesterId: string) =>
+  doc(db, "coachProfiles", uid, "friendRequests", requesterId);
+const friendRef = (uid: string, friendId: string) => doc(db, "coachProfiles", uid, "friends", friendId);
 
 const notify = () => {
   listeners.forEach((listener) => listener());
 };
 
 const serializeState = (state: CoachState): PersistedCoachState => ({
+  friends: state.friends,
+  incomingFriendRequests: state.incomingFriendRequests,
   students: state.students,
   classes: state.classes,
   conditioningExercises: state.conditioningExercises,
@@ -266,6 +306,36 @@ const writeStateToFirestore = async (state: CoachState) => {
   }
 
   await setDoc(coachStateRef(user.uid), serializeState(state), { merge: true });
+};
+
+const toIsoDate = (value: unknown) => {
+  if (value instanceof Timestamp) {
+    return value.toDate().toISOString();
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return new Date().toISOString();
+};
+
+const syncCoachProfile = async (session: CoachSession) => {
+  await setDoc(
+    coachProfileRef(session.id),
+    {
+      uid: session.id,
+      email: session.email,
+      displayName: session.displayName,
+      isGuest: session.isGuest,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
 };
 
 const persistState = (updater: (current: CoachState) => CoachState) => {
@@ -288,12 +358,18 @@ const ensureInitialized = () => {
   onAuthStateChanged(auth, async (user) => {
     coachStateUnsubscribe?.();
     coachStateUnsubscribe = null;
+    friendsUnsubscribe?.();
+    friendsUnsubscribe = null;
+    incomingFriendRequestsUnsubscribe?.();
+    incomingFriendRequestsUnsubscribe = null;
 
     if (!user) {
       cachedState = {
         currentCoach: null,
         isHydrating: false,
         hydrationError: null,
+        friends: [],
+        incomingFriendRequests: [],
         students: [],
         classes: [],
         conditioningExercises: defaultConditioningExercises,
@@ -314,6 +390,86 @@ const ensureInitialized = () => {
     cachedState = mergeState({ currentCoach: session, isHydrating: true, hydrationError: null });
     notify();
 
+    void syncCoachProfile(session).catch((error: unknown) => {
+      console.error("Failed to sync coach profile.", error);
+    });
+
+    friendsUnsubscribe = onSnapshot(
+      friendsCollectionRef(user.uid),
+      (snapshot) => {
+        const friends = snapshot.docs
+          .map((entry) => {
+            const data = entry.data() as {
+              uid?: string;
+              email?: string;
+              displayName?: string;
+              addedAt?: unknown;
+            };
+
+            const uid = data.uid ?? entry.id;
+            const email = (data.email ?? "").trim().toLowerCase();
+            const displayName = (data.displayName ?? "").trim() || coachNameFromEmail(email || uid);
+
+            if (!uid || !email) {
+              return null;
+            }
+
+            return {
+              id: uid,
+              email,
+              displayName,
+              addedAt: toIsoDate(data.addedAt),
+            } satisfies CoachFriend;
+          })
+          .filter((friend): friend is CoachFriend => friend !== null)
+          .sort((left, right) => right.addedAt.localeCompare(left.addedAt));
+
+        cachedState = mergeState({ friends });
+        notify();
+      },
+      (error) => {
+        console.error("Unable to sync friends list.", error);
+      },
+    );
+
+    incomingFriendRequestsUnsubscribe = onSnapshot(
+      incomingFriendRequestsCollectionRef(user.uid),
+      (snapshot) => {
+        const incomingFriendRequests = snapshot.docs
+          .map((entry) => {
+            const data = entry.data() as {
+              requesterId?: string;
+              email?: string;
+              displayName?: string;
+              requestedAt?: unknown;
+            };
+
+            const requesterId = (data.requesterId ?? entry.id).trim();
+            const email = (data.email ?? "").trim().toLowerCase();
+            const displayName = (data.displayName ?? "").trim() || coachNameFromEmail(email || requesterId);
+
+            if (!requesterId || !email) {
+              return null;
+            }
+
+            return {
+              id: requesterId,
+              email,
+              displayName,
+              requestedAt: toIsoDate(data.requestedAt),
+            } satisfies FriendRequest;
+          })
+          .filter((request): request is FriendRequest => request !== null)
+          .sort((left, right) => right.requestedAt.localeCompare(left.requestedAt));
+
+        cachedState = mergeState({ incomingFriendRequests });
+        notify();
+      },
+      (error) => {
+        console.error("Unable to sync incoming friend requests.", error);
+      },
+    );
+
     const reference = coachStateRef(user.uid);
     try {
       const existing = await getDoc(reference);
@@ -331,6 +487,8 @@ const ensureInitialized = () => {
             currentCoach: toSession(user),
             isHydrating: false,
             hydrationError: null,
+            friends: cachedState.friends,
+            incomingFriendRequests: cachedState.incomingFriendRequests,
             students: data?.students,
             classes: data?.classes,
             conditioningExercises: data?.conditioningExercises,
@@ -472,6 +630,8 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
       email: nextEmail,
     };
 
+    await syncCoachProfile(updatedSession);
+
     persistState((current) => ({
       ...current,
       currentCoach: updatedSession,
@@ -509,6 +669,184 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     const credential = EmailAuthProvider.credential(user.email, existingPassword);
     await reauthenticateWithCredential(user, credential);
     await updatePassword(user, nextPassword);
+  };
+
+  const searchCoachByEmail = async (email: string) => {
+    const user = auth.currentUser;
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!user) {
+      throw new Error("No active coach session.");
+    }
+
+    if (!normalizedEmail) {
+      throw new Error("Enter an email to search.");
+    }
+
+    if ((user.email ?? "").toLowerCase() === normalizedEmail) {
+      throw new Error("You cannot add yourself as a friend.");
+    }
+
+    const snapshot = await getDocs(query(collection(db, "coachProfiles"), where("email", "==", normalizedEmail), limit(1)));
+
+    if (!snapshot.docs.length) {
+      return null;
+    }
+
+    const data = snapshot.docs[0].data() as { uid?: string; email?: string; displayName?: string };
+    const id = data.uid ?? snapshot.docs[0].id;
+    const profileEmail = (data.email ?? normalizedEmail).trim().toLowerCase();
+    const displayName = (data.displayName ?? "").trim() || coachNameFromEmail(profileEmail);
+
+    if (id === user.uid) {
+      throw new Error("You cannot add yourself as a friend.");
+    }
+
+    return {
+      id,
+      email: profileEmail,
+      displayName,
+    };
+  };
+
+  const sendFriendRequest = async (friendId: string) => {
+    const user = auth.currentUser;
+
+    if (!user) {
+      throw new Error("No active coach session.");
+    }
+
+    if (!friendId || friendId === user.uid) {
+      throw new Error("Invalid friend account.");
+    }
+
+    const ownProfileSnapshot = await getDoc(coachProfileRef(user.uid));
+    const targetProfileSnapshot = await getDoc(coachProfileRef(friendId));
+
+    if (!targetProfileSnapshot.exists()) {
+      throw new Error("That coach account could not be found.");
+    }
+
+    const ownData = ownProfileSnapshot.data() as { uid?: string; email?: string; displayName?: string } | undefined;
+    const targetData = targetProfileSnapshot.data() as { uid?: string; email?: string; displayName?: string };
+
+    const ownEmail = (ownData?.email ?? user.email ?? "").trim().toLowerCase();
+    const ownDisplayName = (ownData?.displayName ?? user.displayName ?? "").trim() || coachNameFromEmail(ownEmail);
+    const targetUid = (targetData.uid ?? friendId).trim();
+    const targetEmail = (targetData.email ?? "").trim().toLowerCase();
+    if (!targetUid || !targetEmail || !ownEmail) {
+      throw new Error("Unable to resolve coach profile details.");
+    }
+
+    const [existingFriendSnapshot, reverseRequestSnapshot] = await Promise.all([
+      getDoc(friendRef(user.uid, targetUid)),
+      getDoc(incomingFriendRequestRef(user.uid, targetUid)),
+    ]);
+
+    if (existingFriendSnapshot.exists()) {
+      throw new Error("That coach is already your friend.");
+    }
+
+    if (reverseRequestSnapshot.exists()) {
+      throw new Error("That coach already requested you. Approve their request in your incoming requests list.");
+    }
+
+    await setDoc(
+      incomingFriendRequestRef(targetUid, user.uid),
+      {
+        requesterId: user.uid,
+        email: ownEmail,
+        displayName: ownDisplayName,
+        requestedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  };
+
+  const approveFriendRequest = async (requesterId: string) => {
+    const user = auth.currentUser;
+
+    if (!user) {
+      throw new Error("No active coach session.");
+    }
+
+    const trimmedRequesterId = requesterId.trim();
+
+    if (!trimmedRequesterId || trimmedRequesterId === user.uid) {
+      throw new Error("Invalid friend request.");
+    }
+
+    const [ownProfileSnapshot, requesterProfileSnapshot, requestSnapshot] = await Promise.all([
+      getDoc(coachProfileRef(user.uid)),
+      getDoc(coachProfileRef(trimmedRequesterId)),
+      getDoc(incomingFriendRequestRef(user.uid, trimmedRequesterId)),
+    ]);
+
+    if (!requestSnapshot.exists()) {
+      throw new Error("Friend request no longer exists.");
+    }
+
+    if (!requesterProfileSnapshot.exists()) {
+      throw new Error("Requesting coach account could not be found.");
+    }
+
+    const ownData = ownProfileSnapshot.data() as { email?: string; displayName?: string } | undefined;
+    const requesterData = requesterProfileSnapshot.data() as { uid?: string; email?: string; displayName?: string };
+    const ownEmail = (ownData?.email ?? user.email ?? "").trim().toLowerCase();
+    const ownDisplayName = (ownData?.displayName ?? user.displayName ?? "").trim() || coachNameFromEmail(ownEmail);
+    const requesterUid = (requesterData.uid ?? trimmedRequesterId).trim();
+    const requesterEmail = (requesterData.email ?? "").trim().toLowerCase();
+    const requesterDisplayName = (requesterData.displayName ?? "").trim() || coachNameFromEmail(requesterEmail || requesterUid);
+
+    if (!ownEmail || !requesterUid || !requesterEmail) {
+      throw new Error("Unable to resolve coach profile details.");
+    }
+
+    const batch = writeBatch(db);
+
+    batch.set(
+      friendRef(user.uid, requesterUid),
+      {
+        uid: requesterUid,
+        email: requesterEmail,
+        displayName: requesterDisplayName,
+        addedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    batch.set(
+      friendRef(requesterUid, user.uid),
+      {
+        uid: user.uid,
+        email: ownEmail,
+        displayName: ownDisplayName,
+        addedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    batch.delete(incomingFriendRequestRef(user.uid, requesterUid));
+
+    await batch.commit();
+  };
+
+  const declineFriendRequest = async (requesterId: string) => {
+    const user = auth.currentUser;
+
+    if (!user) {
+      throw new Error("No active coach session.");
+    }
+
+    const trimmedRequesterId = requesterId.trim();
+
+    if (!trimmedRequesterId || trimmedRequesterId === user.uid) {
+      throw new Error("Invalid friend request.");
+    }
+
+    const batch = writeBatch(db);
+    batch.delete(incomingFriendRequestRef(user.uid, trimmedRequesterId));
+    await batch.commit();
   };
 
   const addStudent = (input: NewStudentInput) => {
@@ -1112,6 +1450,10 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     signOutCoach,
     updateCoachProfile,
     changeCoachPassword,
+    searchCoachByEmail,
+    sendFriendRequest,
+    approveFriendRequest,
+    declineFriendRequest,
     addStudent,
     deleteStudent,
     updateStudent,
