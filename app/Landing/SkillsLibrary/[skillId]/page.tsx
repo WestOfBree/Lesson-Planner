@@ -19,7 +19,15 @@ export default function SkillDetailPage() {
   const params = useParams<{ skillId: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { skillExercises, lessonPlan, toggleLessonPlanItem, updateSkillExercise, deleteSkillExercise } = useCoachApp();
+  const {
+    skillExercises,
+    lessonPlan,
+    friends,
+    toggleLessonPlanItem,
+    updateSkillExercise,
+    deleteSkillExercise,
+    shareSkillExercise,
+  } = useCoachApp();
   const skill = useMemo(
     () => skillExercises.find((item: SkillLibraryItem) => item.slug === params.skillId || item.id === params.skillId),
     [params.skillId, skillExercises],
@@ -37,6 +45,9 @@ export default function SkillDetailPage() {
 
   const [isEditing, setIsEditing] = useState(searchParams.get("edit") === "1");
   const [statusMessage, setStatusMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [shareTargetId, setShareTargetId] = useState("");
+  const [isSharing, setIsSharing] = useState(false);
   const [title, setTitle] = useState(formDefaults.title);
   const [description, setDescription] = useState(formDefaults.description);
   const [difficulty, setDifficulty] = useState(formDefaults.difficulty);
@@ -117,6 +128,7 @@ export default function SkillDetailPage() {
             className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
             onClick={() => {
               setStatusMessage("");
+              setErrorMessage("");
               setIsEditing((current) => !current);
             }}
           >
@@ -140,11 +152,73 @@ export default function SkillDetailPage() {
             <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{statusMessage}</p>
           ) : null}
 
+          {errorMessage ? (
+            <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</p>
+          ) : null}
+
+          <form
+            className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              setStatusMessage("");
+              setErrorMessage("");
+
+              if (!shareTargetId) {
+                setErrorMessage("Select a coach to share this skill.");
+                return;
+              }
+
+              setIsSharing(true);
+
+              try {
+                await shareSkillExercise(skill.id, shareTargetId);
+                const targetCoach = friends.find((friend) => friend.id === shareTargetId);
+                setStatusMessage(`Shared ${skill.title} with ${targetCoach?.displayName ?? "your friend"}.`);
+                setShareTargetId("");
+              } catch (error) {
+                setErrorMessage(error instanceof Error ? error.message : "Unable to share skill.");
+              } finally {
+                setIsSharing(false);
+              }
+            }}
+          >
+            <h4 className="text-sm font-semibold uppercase tracking-[0.3em] text-teal-700">Share with coach</h4>
+            {friends.length ? (
+              <>
+                <select
+                  value={shareTargetId}
+                  onChange={(event) => setShareTargetId(event.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
+                  aria-label="Select coach to share skill with"
+                >
+                  <option value="">Select friend coach</option>
+                  {friends.map((friend) => (
+                    <option key={friend.id} value={friend.id}>
+                      {friend.displayName} ({friend.email})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  disabled={isSharing}
+                  className="w-full cursor-pointer rounded-xl bg-slate-950 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isSharing ? "Sharing..." : "Share skill"}
+                </button>
+              </>
+            ) : (
+              <p className="rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2 text-sm text-slate-600">
+                Add friends on the coach profile page to share skills.
+              </p>
+            )}
+          </form>
+
           {isEditing ? (
             <form
               className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
               onSubmit={(event) => {
                 event.preventDefault();
+                setErrorMessage("");
                 updateSkillExercise(skill.id, {
                   title,
                   description,
