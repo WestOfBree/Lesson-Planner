@@ -129,9 +129,12 @@ type CoachStore = CoachState & {
   addConditioningExercise: (input: NewLibraryItemInput) => LibraryItem;
   updateConditioningExercise: (exerciseId: string, input: NewLibraryItemInput) => void;
   deleteConditioningExercise: (exerciseId: string) => void;
+  shareConditioningExercise: (exerciseId: string, friendId: string) => Promise<void>;
   addSkillExercise: (input: NewSkillLibraryItemInput) => SkillLibraryItem;
   updateSkillExercise: (exerciseId: string, input: NewSkillLibraryItemInput) => void;
   deleteSkillExercise: (exerciseId: string) => void;
+  shareSkillExercise: (exerciseId: string, friendId: string) => Promise<void>;
+  transferStudentToCoach: (studentId: string, friendId: string) => Promise<void>;
   assignLessonPlanToClass: (input: NewLessonPlanInput) => AssignedLessonPlan;
   updateAssignedLessonPlan: (lessonPlanId: string, input: UpdateLessonPlanInput) => AssignedLessonPlan;
   toggleLessonPlanItem: (kind: "conditioning" | "skill", itemId: string) => void;
@@ -184,6 +187,19 @@ const normalizeLessonPlan = (plan: AssignedLessonPlan): AssignedLessonPlan => ({
   skillIds: plan.skillIds ?? [],
   perStudentSkillIds: plan.perStudentSkillIds ?? {},
   outcomeNotes: plan.outcomeNotes ?? "",
+  perStudentOutcomeNotes: Object.entries(plan.perStudentOutcomeNotes ?? {}).reduce<Record<string, string>>(
+    (current, [studentId, note]) => {
+      const normalizedNote = String(note ?? "").trim();
+
+      if (!normalizedNote) {
+        return current;
+      }
+
+      current[studentId] = normalizedNote;
+      return current;
+    },
+    {},
+  ),
 });
 
 const mergeLibraryItems = <T extends { id: string }>(
@@ -560,6 +576,87 @@ const normalizeSkillItem = (input: NewSkillLibraryItemInput): SkillLibraryItem =
   coachingCues: unique(input.coachingCues),
   lessonUse: input.lessonUse,
   isCustom: true,
+});
+
+const readPersistedState = (value: unknown): Partial<PersistedCoachState> => {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  return value as Partial<PersistedCoachState>;
+};
+
+const ensureFriendId = (friendId: string) => {
+  const trimmedId = friendId.trim();
+
+  if (!trimmedId) {
+    throw new Error("Select a coach first.");
+  }
+
+  const friend = cachedState.friends.find((entry) => entry.id === trimmedId);
+
+  if (!friend) {
+    throw new Error("That coach is not in your friends list.");
+  }
+
+  return friend;
+};
+
+const uniqueSlug = (existingItems: { slug: string }[], baseTitle: string) => {
+  const baseSlug = slugify(baseTitle) || "shared-item";
+  const existing = new Set(existingItems.map((item) => item.slug));
+
+  if (!existing.has(baseSlug)) {
+    return baseSlug;
+  }
+
+  let nextIndex = 2;
+
+  while (existing.has(`${baseSlug}-${nextIndex}`)) {
+    nextIndex += 1;
+  }
+
+  return `${baseSlug}-${nextIndex}`;
+};
+
+const removeStudentFromState = (state: CoachState, studentId: string): CoachState => ({
+  ...state,
+  students: state.students.filter((student) => student.id !== studentId),
+  classes: state.classes.map((classItem) => ({
+    ...classItem,
+    studentIds: classItem.studentIds.filter((id) => id !== studentId),
+  })),
+  assignedLessonPlans: state.assignedLessonPlans.map((plan) => {
+    const nextPerStudentSkillIds = Object.entries(plan.perStudentSkillIds ?? {}).reduce<Record<string, string[]>>(
+      (accumulator, [id, skillIds]) => {
+        if (id === studentId) {
+          return accumulator;
+        }
+
+        accumulator[id] = skillIds;
+        return accumulator;
+      },
+      {},
+    );
+    const nextPerStudentOutcomeNotes = Object.entries(plan.perStudentOutcomeNotes ?? {}).reduce<Record<string, string>>(
+      (accumulator, [id, note]) => {
+        if (id === studentId) {
+          return accumulator;
+        }
+
+        accumulator[id] = note;
+        return accumulator;
+      },
+      {},
+    );
+
+    return {
+      ...plan,
+      studentIds: (plan.studentIds ?? []).filter((id) => id !== studentId),
+      perStudentSkillIds: nextPerStudentSkillIds,
+      perStudentOutcomeNotes: nextPerStudentOutcomeNotes,
+    };
+  }),
 });
 
 export const CoachProvider = ({ children }: { children: ReactNode }) => {
@@ -945,33 +1042,7 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const deleteStudent = (studentId: string) => {
-    persistState((current) => ({
-      ...current,
-      students: current.students.filter((student) => student.id !== studentId),
-      classes: current.classes.map((classItem) => ({
-        ...classItem,
-        studentIds: classItem.studentIds.filter((id) => id !== studentId),
-      })),
-      assignedLessonPlans: current.assignedLessonPlans.map((plan) => {
-        const nextPerStudentSkillIds = Object.entries(plan.perStudentSkillIds ?? {}).reduce<Record<string, string[]>>(
-          (accumulator, [id, skillIds]) => {
-            if (id === studentId) {
-              return accumulator;
-            }
-
-            accumulator[id] = skillIds;
-            return accumulator;
-          },
-          {},
-        );
-
-        return {
-          ...plan,
-          studentIds: (plan.studentIds ?? []).filter((id) => id !== studentId),
-          perStudentSkillIds: nextPerStudentSkillIds,
-        };
-      }),
-    }));
+    persistState((current) => removeStudentFromState(current, studentId));
   };
 
   const updateStudentProgress = (studentId: string, progress: number) => {
@@ -1198,6 +1269,46 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const shareConditioningExercise = async (exerciseId: string, friendId: string) => {
+    const user = auth.currentUser;
+
+    if (!user) {
+      throw new Error("No active coach session.");
+    }
+
+    const friend = ensureFriendId(friendId);
+    const exercise = cachedState.conditioningExercises.find((item) => item.id === exerciseId);
+
+    if (!exercise) {
+      throw new Error("Conditioning exercise could not be found.");
+    }
+
+    const targetStateSnapshot = await getDoc(coachStateRef(friend.id));
+    const targetState = readPersistedState(targetStateSnapshot.data());
+    const currentTargetExercises = mergeLibraryItems(
+      defaultConditioningExercises,
+      targetState.conditioningExercises,
+      targetState.deletedConditioningExerciseIds,
+    );
+
+    const sharedExercise: LibraryItem = {
+      ...exercise,
+      id: createId("item"),
+      slug: uniqueSlug(currentTargetExercises, exercise.title),
+      isCustom: true,
+    };
+
+    await setDoc(
+      coachStateRef(friend.id),
+      {
+        conditioningExercises: [sharedExercise, ...currentTargetExercises],
+        deletedConditioningExerciseIds: (targetState.deletedConditioningExerciseIds ?? []).filter((id) => id !== sharedExercise.id),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  };
+
   const addSkillExercise = (input: NewSkillLibraryItemInput) => {
     const item = normalizeSkillItem(input);
 
@@ -1258,6 +1369,87 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const shareSkillExercise = async (exerciseId: string, friendId: string) => {
+    const user = auth.currentUser;
+
+    if (!user) {
+      throw new Error("No active coach session.");
+    }
+
+    const friend = ensureFriendId(friendId);
+    const skill = cachedState.skillExercises.find((item) => item.id === exerciseId);
+
+    if (!skill) {
+      throw new Error("Skill could not be found.");
+    }
+
+    const targetStateSnapshot = await getDoc(coachStateRef(friend.id));
+    const targetState = readPersistedState(targetStateSnapshot.data());
+    const currentTargetSkills = mergeLibraryItems(
+      defaultSkillExercises,
+      targetState.skillExercises,
+      targetState.deletedSkillExerciseIds,
+    );
+
+    const sharedSkill: SkillLibraryItem = {
+      ...skill,
+      id: createId("item"),
+      slug: uniqueSlug(currentTargetSkills, skill.title),
+      isCustom: true,
+    };
+
+    await setDoc(
+      coachStateRef(friend.id),
+      {
+        skillExercises: [sharedSkill, ...currentTargetSkills],
+        deletedSkillExerciseIds: (targetState.deletedSkillExerciseIds ?? []).filter((id) => id !== sharedSkill.id),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  };
+
+  const transferStudentToCoach = async (studentId: string, friendId: string) => {
+    const user = auth.currentUser;
+
+    if (!user) {
+      throw new Error("No active coach session.");
+    }
+
+    const friend = ensureFriendId(friendId);
+    const student = cachedState.students.find((entry) => entry.id === studentId);
+
+    if (!student) {
+      throw new Error("Student could not be found.");
+    }
+
+    const targetStateSnapshot = await getDoc(coachStateRef(friend.id));
+    const targetState = readPersistedState(targetStateSnapshot.data());
+    const targetStudents = (targetState.students ?? []).map((entry) => normalizeStudent(entry));
+    const transferredStudent: StudentProfileData = {
+      ...student,
+      id: createId("student"),
+      classIds: [],
+      lastUpdated: new Date().toISOString(),
+    };
+    const nextLocalState = removeStudentFromState(cachedState, student.id);
+
+    const batch = writeBatch(db);
+    batch.set(
+      coachStateRef(friend.id),
+      {
+        students: [transferredStudent, ...targetStudents],
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    batch.set(coachStateRef(user.uid), serializeState(nextLocalState), { merge: true });
+    await batch.commit();
+
+    cachedState = nextLocalState;
+    notify();
+  };
+
   const assignLessonPlanToClass = (input: NewLessonPlanInput) => {
     const title = input.title.trim();
     const classId = input.classId.trim();
@@ -1268,6 +1460,7 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     const conditioningReps = input.conditioningReps ?? {};
     const skillIds = unique(input.skillIds);
     const perStudentSkillIds = input.perStudentSkillIds ?? {};
+    const perStudentOutcomeNotes = input.perStudentOutcomeNotes ?? {};
 
     if (!classId || !classDate) {
       throw new Error("Class and class date are required.");
@@ -1309,6 +1502,23 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
       },
       {},
     );
+    const normalizedPerStudentOutcomeNotes = Object.entries(perStudentOutcomeNotes).reduce<Record<string, string>>(
+      (current, [studentId, note]) => {
+        if (!eligibleStudentIds.includes(studentId)) {
+          return current;
+        }
+
+        const normalizedNote = String(note ?? "").trim();
+
+        if (!normalizedNote) {
+          return current;
+        }
+
+        current[studentId] = normalizedNote;
+        return current;
+      },
+      {},
+    );
 
     const createdAt = new Date().toISOString();
 
@@ -1324,6 +1534,7 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
       skillIds,
       perStudentSkillIds: normalizedPerStudentSkillIds,
       outcomeNotes: "",
+      perStudentOutcomeNotes: normalizedPerStudentOutcomeNotes,
       createdAt,
     };
 
@@ -1352,6 +1563,7 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     const conditioningReps = input.conditioningReps ?? {};
     const skillIds = unique(input.skillIds);
     const perStudentSkillIds = input.perStudentSkillIds ?? {};
+    const perStudentOutcomeNotes = input.perStudentOutcomeNotes ?? {};
 
     if (!classId || !classDate) {
       throw new Error("Class and class date are required.");
@@ -1393,6 +1605,23 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
       },
       {},
     );
+    const normalizedPerStudentOutcomeNotes = Object.entries(perStudentOutcomeNotes).reduce<Record<string, string>>(
+      (current, [studentId, note]) => {
+        if (!eligibleStudentIds.includes(studentId)) {
+          return current;
+        }
+
+        const normalizedNote = String(note ?? "").trim();
+
+        if (!normalizedNote) {
+          return current;
+        }
+
+        current[studentId] = normalizedNote;
+        return current;
+      },
+      {},
+    );
 
     const nextPlan: AssignedLessonPlan = {
       ...lessonPlan,
@@ -1406,6 +1635,7 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
       skillIds,
       perStudentSkillIds: normalizedPerStudentSkillIds,
       outcomeNotes,
+      perStudentOutcomeNotes: normalizedPerStudentOutcomeNotes,
     };
 
     persistState((current) => ({
@@ -1466,9 +1696,12 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     addConditioningExercise,
     updateConditioningExercise,
     deleteConditioningExercise,
+    shareConditioningExercise,
     addSkillExercise,
     updateSkillExercise,
     deleteSkillExercise,
+    shareSkillExercise,
+    transferStudentToCoach,
     assignLessonPlanToClass,
     updateAssignedLessonPlan,
     toggleLessonPlanItem,

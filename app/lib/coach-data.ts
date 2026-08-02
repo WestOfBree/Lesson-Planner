@@ -44,6 +44,7 @@ export interface AssignedLessonPlan {
   skillIds: string[];
   perStudentSkillIds: Record<string, string[]>;
   outcomeNotes: string;
+  perStudentOutcomeNotes: Record<string, string>;
   createdAt: string;
 }
 
@@ -132,6 +133,7 @@ export interface NewLessonPlanInput {
   conditioningReps: Record<string, number>;
   skillIds: string[];
   perStudentSkillIds: Record<string, string[]>;
+  perStudentOutcomeNotes?: Record<string, string>;
 }
 
 export interface UpdateLessonPlanInput extends NewLessonPlanInput {

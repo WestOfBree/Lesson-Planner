@@ -37,6 +37,13 @@ export default function LessonPlanDetailPage() {
   const [conditioningRepsById, setConditioningRepsById] = useState<Record<string, number>>(lessonPlan?.conditioningReps ?? {});
   const [selectedClassSkillIds, setSelectedClassSkillIds] = useState<string[]>(lessonPlan?.skillIds ?? []);
   const [perStudentSkillIds, setPerStudentSkillIds] = useState<Record<string, string[]>>(lessonPlan?.perStudentSkillIds ?? {});
+  const [perStudentOutcomeNotes, setPerStudentOutcomeNotes] = useState<Record<string, string>>(
+    lessonPlan?.perStudentOutcomeNotes ?? {},
+  );
+  const [showStudentOutcomeEditor, setShowStudentOutcomeEditor] = useState(
+    Boolean(Object.keys(lessonPlan?.perStudentOutcomeNotes ?? {}).length),
+  );
+  const [todayDateKey] = useState(() => new Date().toISOString().slice(0, 10));
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -53,6 +60,13 @@ export default function LessonPlanDetailPage() {
   const activeStudentIds = selectedStudentIds.length
     ? selectedStudentIds
     : classStudents.map((student) => student.id);
+  const isLessonComplete = useMemo(() => {
+    if (!classDate) {
+      return false;
+    }
+
+    return classDate <= todayDateKey;
+  }, [classDate, todayDateKey]);
 
   const displayConditioningItems = useMemo(
     () => conditioningExercises.filter((item) => (lessonPlan?.conditioningIds ?? []).includes(item.id)),
@@ -142,6 +156,7 @@ export default function LessonPlanDetailPage() {
                       classDate,
                       notes,
                       outcomeNotes,
+                      perStudentOutcomeNotes,
                       studentIds: selectedStudentIds,
                       conditioningIds: selectedConditioningIds,
                       conditioningReps: conditioningRepsById,
@@ -219,6 +234,65 @@ export default function LessonPlanDetailPage() {
                     placeholder="What worked well, where students got stuck, and priorities for the next class."
                   />
                 </label>
+
+                <p className="text-xs text-slate-500">
+                  {isLessonComplete
+                    ? "Lesson date has passed. Add outcome reflections now."
+                    : "Outcome notes are usually completed after the class date."}
+                </p>
+
+                <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">Individual student outcomes</p>
+                      <p className="text-xs text-slate-500">Optional notes for student-specific wins, cues, and next steps.</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="cursor-pointer rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                      onClick={() => setShowStudentOutcomeEditor((current) => !current)}
+                    >
+                      {showStudentOutcomeEditor ? "Hide individual notes" : "Add individual notes"}
+                    </button>
+                  </div>
+
+                  {showStudentOutcomeEditor ? (
+                    activeStudentIds.length ? (
+                      <div className="space-y-3">
+                        {activeStudentIds.map((studentId) => {
+                          const student = students.find((entry) => entry.id === studentId);
+
+                          if (!student) {
+                            return null;
+                          }
+
+                          return (
+                            <label key={`outcome-${student.id}`} className="block space-y-2">
+                              <span className="text-sm font-semibold text-slate-800">{student.name}</span>
+                              <textarea
+                                value={perStudentOutcomeNotes[student.id] ?? ""}
+                                onChange={(event) => {
+                                  const nextValue = event.target.value;
+
+                                  setPerStudentOutcomeNotes((current) => ({
+                                    ...current,
+                                    [student.id]: nextValue,
+                                  }));
+                                }}
+                                className="min-h-20 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-teal-600"
+                                placeholder={`Outcome notes for ${student.name}`}
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2 text-sm text-slate-500">
+                        Select a class with students to add individual outcome notes.
+                      </p>
+                    )
+                  ) : null}
+                </div>
 
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-slate-700">Students in this lesson</p>
@@ -428,6 +502,26 @@ export default function LessonPlanDetailPage() {
                   <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">
                     {lessonPlan.outcomeNotes || "No outcome notes added yet."}
                   </p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Individual student outcomes</p>
+                  {Object.keys(lessonPlan.perStudentOutcomeNotes ?? {}).length ? (
+                    <div className="mt-2 space-y-2">
+                      {Object.entries(lessonPlan.perStudentOutcomeNotes ?? {}).map(([studentId, note]) => {
+                        const student = students.find((entry) => entry.id === studentId);
+
+                        return (
+                          <div key={`preview-outcome-${studentId}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                            <p className="text-sm font-semibold text-slate-900">{student?.name ?? "Student"}</p>
+                            <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">{note}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-sm text-slate-700">No individual student outcomes added.</p>
+                  )}
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">

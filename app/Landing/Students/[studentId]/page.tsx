@@ -35,10 +35,12 @@ export default function StudentProfilePage() {
     classes,
     skillExercises,
     assignedLessonPlans,
+    friends,
     updateStudent,
     updateStudentProgress,
     addStudentNote,
     deleteStudent,
+    transferStudentToCoach,
   } = useCoachApp();
 
   const student = useMemo(
@@ -73,6 +75,8 @@ export default function StudentProfilePage() {
   const [noteText, setNoteText] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [transferTargetId, setTransferTargetId] = useState("");
+  const [isTransferring, setIsTransferring] = useState(false);
   const availableSkillTitles = useMemo(
     () => unique(skillExercises.map((item) => item.title.trim()).filter(Boolean)),
     [skillExercises],
@@ -348,6 +352,71 @@ export default function StudentProfilePage() {
 
             <form
               className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                setErrorMessage("");
+                setStatusMessage("");
+
+                if (!transferTargetId) {
+                  setErrorMessage("Select a coach before transferring this student.");
+                  return;
+                }
+
+                const targetCoach = friends.find((friend) => friend.id === transferTargetId);
+                const transferConfirmed = window.confirm(
+                  `Transfer ${student.name} to ${targetCoach?.displayName ?? "this coach"}? This removes the student from your roster.`,
+                );
+
+                if (!transferConfirmed) {
+                  return;
+                }
+
+                setIsTransferring(true);
+
+                try {
+                  await transferStudentToCoach(student.id, transferTargetId);
+                  setStatusMessage(`Transferred ${student.name} to ${targetCoach?.displayName ?? "your friend"}.`);
+                  router.push("/Landing/Students");
+                } catch (error) {
+                  setErrorMessage(error instanceof Error ? error.message : "Unable to transfer student.");
+                } finally {
+                  setIsTransferring(false);
+                }
+              }}
+            >
+              <h4 className="text-sm font-semibold uppercase tracking-[0.3em] text-teal-700">Transfer student</h4>
+              {friends.length ? (
+                <>
+                  <select
+                    value={transferTargetId}
+                    onChange={(event) => setTransferTargetId(event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-teal-600"
+                    aria-label="Select coach to transfer student to"
+                  >
+                    <option value="">Select friend coach</option>
+                    {friends.map((friend) => (
+                      <option key={friend.id} value={friend.id}>
+                        {friend.displayName} ({friend.email})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={isTransferring}
+                    className="w-full cursor-pointer rounded-2xl bg-slate-950 px-4 py-3 font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isTransferring ? "Transferring..." : "Transfer student"}
+                  </button>
+                </>
+              ) : (
+                <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-600">
+                  Add friends on the coach profile page before transferring students.
+                </p>
+              )}
+            </form>
+
+            <form
+              className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
               onSubmit={(event) => {
                 event.preventDefault();
                 setErrorMessage("");
@@ -511,6 +580,7 @@ export default function StudentProfilePage() {
             {studentLessonPlans.length ? (
               studentLessonPlans.map((plan) => {
                 const classItem = classes.find((entry) => entry.id === plan.classId);
+                const individualOutcomeNote = (plan.perStudentOutcomeNotes?.[student.id] ?? "").trim();
 
                 return (
                   <div key={plan.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -523,6 +593,9 @@ export default function StudentProfilePage() {
                     <p className="mt-1 text-xs uppercase tracking-[0.25em] text-teal-700">{classItem?.name ?? "Unknown class"}</p>
                     {plan.notes ? <p className="mt-2 text-sm leading-6 text-slate-700">{plan.notes}</p> : null}
                     {plan.outcomeNotes ? <p className="mt-2 text-sm leading-6 text-emerald-800">Outcome: {plan.outcomeNotes}</p> : null}
+                    {individualOutcomeNote ? (
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-teal-800">Student outcome: {individualOutcomeNote}</p>
+                    ) : null}
                     <div className="mt-2 text-xs text-slate-600">
                       <p>Conditioning: {plan.conditioningIds.length} blocks</p>
                       <p>
