@@ -21,6 +21,7 @@ import {
 } from "firebase/auth";
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -60,12 +61,27 @@ type SignInInput = {
   mode: "login" | "register" | "guest";
 };
 
+type ShareKind = "conditioning" | "skill";
+
+type PendingShareRequest = {
+  id: string;
+  senderId: string;
+  senderEmail: string;
+  senderDisplayName: string;
+  recipientId: string;
+  kind: ShareKind;
+  item: LibraryItem | SkillLibraryItem;
+  createdAt: string;
+  status: "pending";
+};
+
 type CoachState = {
   currentCoach: CoachSession | null;
   isHydrating: boolean;
   hydrationError: string | null;
   friends: CoachFriend[];
   incomingFriendRequests: FriendRequest[];
+  incomingShares: PendingShareRequest[];
   students: StudentProfileData[];
   classes: CoachClassData[];
   conditioningExercises: LibraryItem[];
@@ -103,6 +119,8 @@ type CoachStore = CoachState & {
   sendFriendRequest: (friendId: string) => Promise<void>;
   approveFriendRequest: (requesterId: string) => Promise<void>;
   declineFriendRequest: (requesterId: string) => Promise<void>;
+  acceptSharedItem: (shareId: string) => Promise<void>;
+  declineSharedItem: (shareId: string) => Promise<void>;
   addStudent: (input: NewStudentInput) => StudentProfileData;
   deleteStudent: (studentId: string) => void;
   updateStudent: (
@@ -148,6 +166,7 @@ let cachedState: CoachState = {
   hydrationError: null,
   friends: [],
   incomingFriendRequests: [],
+  incomingShares: [],
   students: [],
   classes: [],
   conditioningExercises: defaultConditioningExercises,
@@ -164,6 +183,7 @@ let initialized = false;
 let coachStateUnsubscribe: (() => void) | null = null;
 let friendsUnsubscribe: (() => void) | null = null;
 let incomingFriendRequestsUnsubscribe: (() => void) | null = null;
+let incomingSharesUnsubscribe: (() => void) | null = null;
 
 const CoachContext = createContext<CoachStore | null>(null);
 
@@ -273,6 +293,7 @@ const mergeState = (value: Partial<CoachState> | null | undefined): CoachState =
   lessonPlan: value?.lessonPlan ?? cachedState.lessonPlan,
   currentCoach: value?.currentCoach ?? cachedState.currentCoach,
   incomingFriendRequests: value?.incomingFriendRequests ?? cachedState.incomingFriendRequests,
+  incomingShares: value?.incomingShares ?? cachedState.incomingShares,
   isHydrating: value?.isHydrating ?? cachedState.isHydrating,
   hydrationError: value?.hydrationError ?? cachedState.hydrationError,
 });
@@ -294,6 +315,8 @@ const friendsCollectionRef = (uid: string) => collection(db, "coachProfiles", ui
 const incomingFriendRequestsCollectionRef = (uid: string) => collection(db, "coachProfiles", uid, "friendRequests");
 const incomingFriendRequestRef = (uid: string, requesterId: string) =>
   doc(db, "coachProfiles", uid, "friendRequests", requesterId);
+const incomingSharesCollectionRef = (uid: string) => collection(db, "coachProfiles", uid, "incomingShares");
+const incomingShareRef = (uid: string, shareId: string) => doc(db, "coachProfiles", uid, "incomingShares", shareId);
 const friendRef = (uid: string, friendId: string) => doc(db, "coachProfiles", uid, "friends", friendId);
 
 const notify = () => {
@@ -303,6 +326,7 @@ const notify = () => {
 const serializeState = (state: CoachState): PersistedCoachState => ({
   friends: state.friends,
   incomingFriendRequests: state.incomingFriendRequests,
+  incomingShares: state.incomingShares,
   students: state.students,
   classes: state.classes,
   conditioningExercises: state.conditioningExercises,
@@ -378,6 +402,8 @@ const ensureInitialized = () => {
     friendsUnsubscribe = null;
     incomingFriendRequestsUnsubscribe?.();
     incomingFriendRequestsUnsubscribe = null;
+    incomingSharesUnsubscribe?.();
+    incomingSharesUnsubscribe = null;
 
     if (!user) {
       cachedState = {
@@ -386,6 +412,7 @@ const ensureInitialized = () => {
         hydrationError: null,
         friends: [],
         incomingFriendRequests: [],
+        incomingShares: [],
         students: [],
         classes: [],
         conditioningExercises: defaultConditioningExercises,
@@ -483,6 +510,56 @@ const ensureInitialized = () => {
       },
       (error) => {
         console.error("Unable to sync incoming friend requests.", error);
+      },
+    );
+
+    incomingSharesUnsubscribe = onSnapshot(
+      incomingSharesCollectionRef(user.uid),
+      (snapshot) => {
+        const incomingShares = snapshot.docs
+          .map((entry) => {
+            const data = entry.data() as {
+              senderId?: string;
+              senderEmail?: string;
+              senderDisplayName?: string;
+              recipientId?: string;
+              kind?: ShareKind;
+              item?: LibraryItem | SkillLibraryItem;
+              createdAt?: unknown;
+              status?: "pending";
+            };
+
+            const senderId = (data.senderId ?? "").trim();
+            const senderEmail = (data.senderEmail ?? "").trim().toLowerCase();
+            const senderDisplayName = (data.senderDisplayName ?? "").trim();
+            const recipientId = (data.recipientId ?? "").trim();
+            const kind = data.kind === "skill" ? "skill" : "conditioning";
+            const item = data.item;
+
+            if (!senderId || !recipientId || !item || data.status !== "pending") {
+              return null;
+            }
+
+            return {
+              id: entry.id,
+              senderId,
+              senderEmail,
+              senderDisplayName: senderDisplayName || coachNameFromEmail(senderEmail || senderId),
+              recipientId,
+              kind,
+              item,
+              createdAt: toIsoDate(data.createdAt),
+              status: "pending",
+            } satisfies PendingShareRequest;
+          })
+          .filter((share): share is PendingShareRequest => share !== null)
+          .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+
+        cachedState = mergeState({ incomingShares });
+        notify();
+      },
+      (error) => {
+        console.error("Unable to sync incoming shared items.", error);
       },
     );
 
@@ -946,6 +1023,116 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     await batch.commit();
   };
 
+  const acceptSharedItem = async (shareId: string) => {
+    const user = auth.currentUser;
+
+    if (!user) {
+      throw new Error("No active coach session.");
+    }
+
+    const trimmedShareId = shareId.trim();
+
+    if (!trimmedShareId) {
+      throw new Error("Shared item could not be found.");
+    }
+
+    const shareSnapshot = await getDoc(incomingShareRef(user.uid, trimmedShareId));
+
+    if (!shareSnapshot.exists()) {
+      throw new Error("Shared item could not be found.");
+    }
+
+    const shareData = shareSnapshot.data() as {
+      kind?: ShareKind;
+      item?: LibraryItem | SkillLibraryItem;
+      recipientId?: string;
+      senderId?: string;
+      status?: "pending";
+    };
+
+    if (shareData.status !== "pending") {
+      throw new Error("This shared item is no longer pending review.");
+    }
+
+    if (shareData.recipientId && shareData.recipientId !== user.uid) {
+      throw new Error("You cannot accept this shared item.");
+    }
+
+    if (shareData.kind === "conditioning") {
+      const item = shareData.item as LibraryItem | undefined;
+
+      if (!item) {
+        throw new Error("The shared conditioning exercise could not be loaded.");
+      }
+
+      const targetStateSnapshot = await getDoc(coachStateRef(user.uid));
+      const targetState = readPersistedState(targetStateSnapshot.data());
+      const currentTargetExercises = mergeLibraryItems(
+        defaultConditioningExercises,
+        targetState.conditioningExercises,
+        targetState.deletedConditioningExerciseIds,
+      );
+      const acceptedItem: LibraryItem = {
+        ...item,
+        id: createId("item"),
+        slug: uniqueSlug(currentTargetExercises, item.title),
+        isCustom: true,
+      };
+
+      persistState((current) => ({
+        ...current,
+        deletedConditioningExerciseIds: current.deletedConditioningExerciseIds.filter((id) => id !== acceptedItem.id),
+        conditioningExercises: [acceptedItem, ...current.conditioningExercises],
+      }));
+    } else if (shareData.kind === "skill") {
+      const item = shareData.item as SkillLibraryItem | undefined;
+
+      if (!item) {
+        throw new Error("The shared skill could not be loaded.");
+      }
+
+      const targetStateSnapshot = await getDoc(coachStateRef(user.uid));
+      const targetState = readPersistedState(targetStateSnapshot.data());
+      const currentTargetSkills = mergeLibraryItems(
+        defaultSkillExercises,
+        targetState.skillExercises,
+        targetState.deletedSkillExerciseIds,
+      );
+      const acceptedItem: SkillLibraryItem = {
+        ...item,
+        id: createId("item"),
+        slug: uniqueSlug(currentTargetSkills, item.title),
+        isCustom: true,
+      };
+
+      persistState((current) => ({
+        ...current,
+        deletedSkillExerciseIds: current.deletedSkillExerciseIds.filter((id) => id !== acceptedItem.id),
+        skillExercises: [acceptedItem, ...current.skillExercises],
+      }));
+    } else {
+      throw new Error("Unsupported shared item type.");
+    }
+
+    await deleteDoc(incomingShareRef(user.uid, trimmedShareId));
+  };
+
+  const declineSharedItem = async (shareId: string) => {
+    const user = auth.currentUser;
+
+    if (!user) {
+      throw new Error("No active coach session.");
+    }
+
+    const trimmedShareId = shareId.trim();
+
+    if (!trimmedShareId) {
+      throw new Error("Shared item could not be found.");
+    }
+
+    await deleteDoc(incomingShareRef(user.uid, trimmedShareId));
+  };
+
   const addStudent = (input: NewStudentInput) => {
     const classIds = unique(input.classIds);
     const createdAt = new Date().toISOString();
@@ -1283,27 +1470,21 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
       throw new Error("Conditioning exercise could not be found.");
     }
 
-    const targetStateSnapshot = await getDoc(coachStateRef(friend.id));
-    const targetState = readPersistedState(targetStateSnapshot.data());
-    const currentTargetExercises = mergeLibraryItems(
-      defaultConditioningExercises,
-      targetState.conditioningExercises,
-      targetState.deletedConditioningExerciseIds,
-    );
-
-    const sharedExercise: LibraryItem = {
-      ...exercise,
-      id: createId("item"),
-      slug: uniqueSlug(currentTargetExercises, exercise.title),
-      isCustom: true,
-    };
+    const senderName = cachedState.currentCoach?.displayName || user.displayName || coachNameFromEmail(user.email ?? "");
+    const shareId = createId("share");
 
     await setDoc(
-      coachStateRef(friend.id),
+      incomingShareRef(friend.id, shareId),
       {
-        conditioningExercises: [sharedExercise, ...currentTargetExercises],
-        deletedConditioningExerciseIds: (targetState.deletedConditioningExerciseIds ?? []).filter((id) => id !== sharedExercise.id),
-        updatedAt: serverTimestamp(),
+        id: shareId,
+        senderId: user.uid,
+        senderEmail: user.email?.trim().toLowerCase() ?? "",
+        senderDisplayName: senderName,
+        recipientId: friend.id,
+        kind: "conditioning",
+        item: exercise,
+        status: "pending",
+        createdAt: serverTimestamp(),
       },
       { merge: true },
     );
@@ -1383,27 +1564,21 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
       throw new Error("Skill could not be found.");
     }
 
-    const targetStateSnapshot = await getDoc(coachStateRef(friend.id));
-    const targetState = readPersistedState(targetStateSnapshot.data());
-    const currentTargetSkills = mergeLibraryItems(
-      defaultSkillExercises,
-      targetState.skillExercises,
-      targetState.deletedSkillExerciseIds,
-    );
-
-    const sharedSkill: SkillLibraryItem = {
-      ...skill,
-      id: createId("item"),
-      slug: uniqueSlug(currentTargetSkills, skill.title),
-      isCustom: true,
-    };
+    const senderName = cachedState.currentCoach?.displayName || user.displayName || coachNameFromEmail(user.email ?? "");
+    const shareId = createId("share");
 
     await setDoc(
-      coachStateRef(friend.id),
+      incomingShareRef(friend.id, shareId),
       {
-        skillExercises: [sharedSkill, ...currentTargetSkills],
-        deletedSkillExerciseIds: (targetState.deletedSkillExerciseIds ?? []).filter((id) => id !== sharedSkill.id),
-        updatedAt: serverTimestamp(),
+        id: shareId,
+        senderId: user.uid,
+        senderEmail: user.email?.trim().toLowerCase() ?? "",
+        senderDisplayName: senderName,
+        recipientId: friend.id,
+        kind: "skill",
+        item: skill,
+        status: "pending",
+        createdAt: serverTimestamp(),
       },
       { merge: true },
     );
@@ -1684,6 +1859,8 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     sendFriendRequest,
     approveFriendRequest,
     declineFriendRequest,
+    acceptSharedItem,
+    declineSharedItem,
     addStudent,
     deleteStudent,
     updateStudent,

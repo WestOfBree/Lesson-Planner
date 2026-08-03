@@ -173,7 +173,7 @@ export default function SkillDetailPage() {
               try {
                 await shareSkillExercise(skill.id, shareTargetId);
                 const targetCoach = friends.find((friend) => friend.id === shareTargetId);
-                setStatusMessage(`Shared ${skill.title} with ${targetCoach?.displayName ?? "your friend"}.`);
+                setStatusMessage(`Shared ${skill.title} with ${targetCoach?.displayName ?? "your friend"}. Awaiting their review.`);
                 setShareTargetId("");
               } catch (error) {
                 setErrorMessage(error instanceof Error ? error.message : "Unable to share skill.");

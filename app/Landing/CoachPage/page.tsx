@@ -9,12 +9,15 @@ export default function CoachPage() {
 		currentCoach,
 		friends,
 		incomingFriendRequests,
+		incomingShares,
 		updateCoachProfile,
 		changeCoachPassword,
 		searchCoachByEmail,
 		sendFriendRequest,
 		approveFriendRequest,
 		declineFriendRequest,
+		acceptSharedItem,
+		declineSharedItem,
 	} = useCoachApp();
 
 	const [currentPassword, setCurrentPassword] = useState("");
@@ -135,6 +138,30 @@ export default function CoachPage() {
 			setFriendStatusMessage("Friend request declined.");
 		} catch (error) {
 			setFriendErrorMessage(error instanceof Error ? error.message : "Unable to decline friend request.");
+		}
+	};
+
+	const handleAcceptSharedItem = async (shareId: string) => {
+		setFriendErrorMessage("");
+		setFriendStatusMessage("");
+
+		try {
+			await acceptSharedItem(shareId);
+			setFriendStatusMessage("Shared item added to your library.");
+		} catch (error) {
+			setFriendErrorMessage(error instanceof Error ? error.message : "Unable to accept shared item.");
+		}
+	};
+
+	const handleDeclineSharedItem = async (shareId: string) => {
+		setFriendErrorMessage("");
+		setFriendStatusMessage("");
+
+		try {
+			await declineSharedItem(shareId);
+			setFriendStatusMessage("Shared item declined.");
+		} catch (error) {
+			setFriendErrorMessage(error instanceof Error ? error.message : "Unable to decline shared item.");
 		}
 	};
 
@@ -347,6 +374,44 @@ export default function CoachPage() {
 									<p className="text-sm text-slate-500">No incoming friend requests.</p>
 								)}
 							</div>
+
+						<div className="mt-5 space-y-2">
+							<p className="text-sm font-medium text-slate-700">Items waiting for your review</p>
+							{incomingShares.length ? (
+								<ul className="space-y-2">
+									{incomingShares.map((share) => (
+										<li key={share.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+											<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+												<div>
+													<p className="font-medium text-slate-950">{share.item.title}</p>
+													<p className="text-sm text-slate-600">
+														From {share.senderDisplayName} • {share.kind === "conditioning" ? "Conditioning exercise" : "Skill"}
+													</p>
+												</div>
+												<div className="flex items-center gap-2">
+													<button
+														type="button"
+														onClick={() => void handleAcceptSharedItem(share.id)}
+														className="cursor-pointer rounded-2xl bg-emerald-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
+													>
+														Accept
+													</button>
+													<button
+														type="button"
+														onClick={() => void handleDeclineSharedItem(share.id)}
+														className="cursor-pointer rounded-2xl bg-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-300"
+													>
+														Decline
+													</button>
+												</div>
+											</div>
+										</li>
+									))}
+								</ul>
+							) : (
+								<p className="text-sm text-slate-500">No shared items waiting for review.</p>
+							)}
+						</div>
 
 						<div className="mt-5 space-y-2">
 							<p className="text-sm font-medium text-slate-700">Your friends</p>

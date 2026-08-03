@@ -212,7 +212,7 @@ export default function ConditioningDetailPage() {
               try {
                 await shareConditioningExercise(exercise.id, shareTargetId);
                 const targetCoach = friends.find((friend) => friend.id === shareTargetId);
-                setStatusMessage(`Shared ${exercise.title} with ${targetCoach?.displayName ?? "your friend"}.`);
+                setStatusMessage(`Shared ${exercise.title} with ${targetCoach?.displayName ?? "your friend"}. Awaiting their review.`);
                 setShareTargetId("");
               } catch (error) {
                 setErrorMessage(error instanceof Error ? error.message : "Unable to share exercise.");

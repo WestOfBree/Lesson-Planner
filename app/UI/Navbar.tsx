@@ -104,7 +104,7 @@ export default function Navbar() {
 
           <nav
             id="coach-main-navigation"
-            className={`${isMenuOpen ? "flex" : "hidden"} flex-wrap gap-2 lg:flex`}
+            className={`${isMenuOpen ? "grid" : "hidden"}  w-full grid-cols-3 gap-2 lg:flex lg:w-auto lg:flex-wrap lg:justify-start`}
           >
             {links.map((link) => {
               const isHomeLink = link.href === "/Landing";
@@ -117,7 +117,7 @@ export default function Navbar() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setIsMenuOpen(false)}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  className={`flex min-h-11 items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition ${
                     isActive
                       ? "bg-slate-900 text-white shadow-[0_10px_24px_rgba(15,23,42,0.32)]"
                       : "bg-indigo-50 text-slate-700 hover:bg-indigo-100"
@@ -129,12 +129,12 @@ export default function Navbar() {
             })}
           </nav>
 
-          <div className={`${isMenuOpen ? "flex" : "hidden"} items-center gap-3 lg:flex`}>
+          <div className={`${isMenuOpen ? "flex" : "hidden"} items-center justify-between gap-3 lg:flex`}>
             <Link
               href="/Landing/CoachPage"
               aria-label="Open coach profile"
               onClick={() => setIsMenuOpen(false)}
-              className="hidden rounded-2xl border border-indigo-200/70 bg-indigo-50/70 px-3 py-2 text-right transition hover:border-indigo-300 hover:bg-white sm:block"
+              className="flex flex-col rounded-2xl border border-indigo-200/70 bg-indigo-50/70 px-3 py-2 text-left transition hover:border-indigo-300 hover:bg-white sm:block sm:text-right"
             >
               <p className="text-sm font-medium text-slate-950">{currentCoach?.displayName ?? "Signed out"}</p>
               <p className="text-xs text-slate-500">{currentCoach?.email ?? "Log back in to continue"}</p>
