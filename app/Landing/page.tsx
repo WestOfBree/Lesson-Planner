@@ -83,15 +83,15 @@ export default function LandingPage() {
         </main>
       ) : null}
 
-      <main className={`mx-auto mt-6 grid w-full max-w-7xl gap-6 lg:mt-8 ${isHydrating ? "pointer-events-none opacity-40" : ""}`}>
-        <section className="landing-control-deck overflow-hidden rounded-4xl border border-indigo-200/70 bg-white/92 text-slate-900 shadow-[0_24px_70px_rgba(15,23,42,0.18)] dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_24px_70px_rgba(15,23,42,0.34)]">
+      <main className={`mx-auto mt-6 grid w-full max-w-7xl gap-6 lg:mt-8 ${isHydrating ? "pointer-events-none" : ""}`}>
+        <section className="landing-control-deck overflow-hidden rounded-4xl border border-indigo-200/70 bg-white/92 text-indigo-950 shadow-[0_24px_70px_rgba(15,23,42,0.18)] dark:bg-slate-900 dark:text-indigo-100 dark:shadow-[0_24px_70px_rgba(15,23,42,0.34)]">
           <div className="grid gap-8 p-6 sm:p-8 xl:grid-cols-[1.5fr_1fr]">
             <div>
-              <p className="text-xs uppercase tracking-[0.42em] text-slate-900 dark:text-cyan-300">Control deck</p>
-              <h2 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl text-slate-900 dark:text-white">
+              <p className="text-xs uppercase tracking-[0.42em] text-indigo-900 dark:text-cyan-300">Control deck</p>
+              <h2 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl text-indigo-950 dark:text-indigo-50">
                 {currentCoach ? `${currentCoach.displayName}, your coaching board is live.` : "Your coaching board is live."}
               </h2>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base dark:text-slate-300">
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-indigo-800 sm:text-base dark:text-indigo-200">
                 Build sessions faster, keep class momentum visible, and pull exactly what you need into the next lesson.
               </p>
 
@@ -99,15 +99,15 @@ export default function LandingPage() {
                 {boardStats.map((stat, index) => (
                   <article
                     key={stat.label}
-                    className={`landing-stat-card rounded-2xl border px-4 py-3 ${
+                    className={`landing-stat-card rounded-2xl border px-4 py-3 shadow-sm transition-colors duration-200 ${
                       index % 2 === 0
-                        ? "border-cyan-300/55 bg-cyan-50/80 dark:border-cyan-300/35 dark:bg-cyan-400/10"
-                        : "border-orange-300/55 bg-orange-50/85 dark:border-orange-300/35 dark:bg-orange-400/10"
+                        ? "border-cyan-300/70 bg-cyan-100/80 text-indigo-900 shadow-cyan-100/60 dark:border-cyan-400/40 dark:bg-cyan-500/10 dark:text-indigo-100"
+                        : "border-orange-300/70 bg-orange-100/80 text-indigo-900 shadow-orange-100/60 dark:border-orange-400/40 dark:bg-orange-500/10 dark:text-indigo-100"
                     }`}
                   >
-                    <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-300">{stat.label}</p>
-                    <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">{stat.value}</p>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">{stat.hint}</p>
+                    <p className="text-xs uppercase tracking-[0.24em] text-indigo-700 dark:text-indigo-200">{stat.label}</p>
+                    <p className="mt-2 text-3xl font-semibold text-indigo-950 dark:text-indigo-50">{stat.value}</p>
+                    <p className="mt-1 text-xs text-indigo-700 dark:text-indigo-200">{stat.hint}</p>
                   </article>
                 ))}
               </div>
@@ -115,13 +115,13 @@ export default function LandingPage() {
 
             <aside className="landing-draft-panel rounded-2xl border border-indigo-300/50 bg-indigo-50/85 p-5 backdrop-blur dark:border-indigo-300/35 dark:bg-white/10">
               <p className="text-xs uppercase tracking-[0.35em] text-amber-700 dark:text-amber-200">Lesson draft</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
+              <p className="mt-2 text-2xl font-semibold text-indigo-950 dark:text-indigo-50">
                 {lessonPlan.conditioningIds.length + lessonPlan.skillIds.length} total picks
               </p>
 
               <div className="mt-5 space-y-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-600 dark:text-slate-300">Conditioning</p>
+                  <p className="text-xs uppercase tracking-[0.22em] text-indigo-800 dark:text-indigo-200">Conditioning</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {selectedConditioning.length ? (
                       selectedConditioning.map((item: LibraryItem) => (
@@ -130,13 +130,13 @@ export default function LandingPage() {
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-slate-600 dark:text-slate-300">No conditioning selected yet.</span>
+                      <span className="text-sm text-indigo-800 dark:text-indigo-200">No conditioning selected yet.</span>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-600 dark:text-slate-300">Skills</p>
+                  <p className="text-xs uppercase tracking-[0.22em] text-indigo-800 dark:text-indigo-200">Skills</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {selectedSkills.length ? (
                       selectedSkills.map((item: SkillLibraryItem) => (
@@ -145,14 +145,14 @@ export default function LandingPage() {
                         </span>
                       ))
                     ) : (
-                      <span className="text-sm text-slate-600 dark:text-slate-300">No skills selected yet.</span>
+                      <span className="text-sm text-indigo-800 dark:text-indigo-200">No skills selected yet.</span>
                     )}
                   </div>
                 </div>
 
                 <button
                   type="button"
-                  className="w-full rounded-xl border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition hover:bg-indigo-50 dark:border-white/35 dark:bg-white/15 dark:text-white dark:hover:bg-white/25"
+                  className="w-full rounded-xl border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-900 transition hover:bg-indigo-50 dark:border-white/35 dark:bg-white/15 dark:text-indigo-50 dark:hover:bg-white/25"
                   onClick={clearLessonPlan}
                 >
                   Reset draft
@@ -170,11 +170,11 @@ export default function LandingPage() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="landing-launch-link rounded-2xl border border-indigo-200/65 bg-linear-to-r from-white to-indigo-50 px-4 py-3 transition hover:-translate-y-0.5 hover:border-indigo-300 dark:border-indigo-300/35 dark:from-slate-900 dark:to-slate-800 dark:hover:border-indigo-200/55"
+                  className="landing-launch-link rounded-2xl border border-indigo-200/70 bg-indigo-100/75 bg-linear-to-r from-indigo-200 via-cyan-100 to-white px-4 py-3 transition hover:-translate-y-0.5 hover:border-indigo-300 hover:from-indigo-300 hover:via-cyan-200 hover:to-indigo-50 dark:border-indigo-300/35 dark:from-indigo-950/65 dark:via-slate-900 dark:to-cyan-950/45 dark:hover:border-cyan-300/55"
                 >
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-500 dark:text-indigo-300">0{index + 1}</p>
-                  <h3 className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">{link.title}</h3>
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{link.description}</p>
+                  <h3 className="mt-1 text-xl font-semibold text-indigo-950 dark:text-indigo-50">{link.title}</h3>
+                  <p className="mt-1 text-sm text-indigo-800 dark:text-indigo-200">{link.description}</p>
                 </Link>
               ))}
             </div>
@@ -186,19 +186,23 @@ export default function LandingPage() {
               <div className="mt-4 grid gap-3">
                 {recentStudents.length ? (
                   recentStudents.map((student) => (
-                    <div key={student.id} className="landing-student-row rounded-2xl border border-cyan-200/70 bg-cyan-50/70 px-4 py-3 dark:border-cyan-300/30 dark:bg-slate-800/80">
+                    <Link
+                      key={student.id}
+                      href={`/Landing/Students/${student.id}`}
+                      className="landing-student-row block rounded-2xl border border-cyan-200/70 bg-cyan-50/70 px-4 py-3 transition hover:-translate-y-0.5 hover:border-cyan-300/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 dark:border-cyan-300/30 dark:bg-slate-800/80 dark:hover:border-cyan-200/60 dark:focus-visible:ring-cyan-200/60"
+                    >
                       <div className="flex items-center justify-between gap-4">
                         <div>
-                          <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{student.name}</h3>
-                          <p className="text-sm text-slate-600 dark:text-slate-300">{student.level}</p>
+                          <h3 className="text-xl font-semibold text-indigo-950 dark:text-indigo-50">{student.name}</h3>
+                          <p className="text-sm text-indigo-800 dark:text-indigo-200">{student.level}</p>
                         </div>
                         <span className="rounded-full bg-cyan-500 px-3 py-1 text-xs font-semibold text-white dark:bg-cyan-400">{student.progress}%</span>
                       </div>
-                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{student.focus || "No focus added yet."}</p>
-                    </div>
+                      <p className="mt-2 text-sm text-indigo-800 dark:text-indigo-200">{student.focus || "No focus added yet."}</p>
+                    </Link>
                   ))
                 ) : (
-                  <p className="rounded-2xl border border-dashed border-cyan-300 bg-cyan-50/40 p-4 text-sm text-slate-600 dark:border-cyan-300/35 dark:bg-slate-800/70 dark:text-slate-300">
+                  <p className="rounded-2xl border border-dashed border-cyan-300 bg-cyan-50/40 p-4 text-sm text-indigo-800 dark:border-cyan-300/35 dark:bg-slate-800/70 dark:text-indigo-200">
                     No students yet. Add your first student profile to start tracking progress.
                   </p>
                 )}
@@ -213,18 +217,18 @@ export default function LandingPage() {
                     <div key={classItem.id} className="landing-class-row rounded-2xl border border-orange-200/70 bg-orange-50/70 px-4 py-3 dark:border-orange-300/30 dark:bg-slate-800/80">
                       <div className="flex items-center justify-between gap-4">
                         <div>
-                          <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{classItem.name}</h3>
-                          <p className="text-sm text-slate-600 dark:text-slate-300">{classItem.schedule}</p>
+                          <h3 className="text-xl font-semibold text-indigo-950 dark:text-indigo-50">{classItem.name}</h3>
+                          <p className="text-sm text-indigo-800 dark:text-indigo-200">{classItem.schedule}</p>
                         </div>
                         <span className="rounded-full bg-orange-400 px-3 py-1 text-xs font-semibold text-white dark:bg-orange-500">
                           {classItem.studentIds.length} students
                         </span>
                       </div>
-                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{classItem.focus || "No class focus added yet."}</p>
+                      <p className="mt-2 text-sm text-indigo-800 dark:text-indigo-200">{classItem.focus || "No class focus added yet."}</p>
                     </div>
                   ))
                 ) : (
-                  <p className="rounded-2xl border border-dashed border-orange-300 bg-orange-50/40 p-4 text-sm text-slate-600 dark:border-orange-300/35 dark:bg-slate-800/70 dark:text-slate-300">
+                  <p className="rounded-2xl border border-dashed border-orange-300 bg-orange-50/40 p-4 text-sm text-indigo-800 dark:border-orange-300/35 dark:bg-slate-800/70 dark:text-indigo-200">
                     No classes yet. Create a class and assign students to keep groups organized.
                   </p>
                 )}

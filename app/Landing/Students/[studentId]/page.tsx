@@ -75,6 +75,8 @@ export default function StudentProfilePage() {
   const [noteText, setNoteText] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [transferErrorMessage, setTransferErrorMessage] = useState("");
+  const [transferStatusMessage, setTransferStatusMessage] = useState("");
   const [transferTargetId, setTransferTargetId] = useState("");
   const [isTransferring, setIsTransferring] = useState(false);
   const availableSkillTitles = useMemo(
@@ -354,17 +356,17 @@ export default function StudentProfilePage() {
               className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
               onSubmit={async (event) => {
                 event.preventDefault();
-                setErrorMessage("");
-                setStatusMessage("");
+                setTransferErrorMessage("");
+                setTransferStatusMessage("");
 
                 if (!transferTargetId) {
-                  setErrorMessage("Select a coach before transferring this student.");
+                  setTransferErrorMessage("Select a coach before transferring this student.");
                   return;
                 }
 
                 const targetCoach = friends.find((friend) => friend.id === transferTargetId);
                 const transferConfirmed = window.confirm(
-                  `Transfer ${student.name} to ${targetCoach?.displayName ?? "this coach"}? This removes the student from your roster.`,
+                  `Send a transfer request for ${student.name} to ${targetCoach?.displayName ?? "this coach"}?`,
                 );
 
                 if (!transferConfirmed) {
@@ -375,10 +377,10 @@ export default function StudentProfilePage() {
 
                 try {
                   await transferStudentToCoach(student.id, transferTargetId);
-                  setStatusMessage(`Transferred ${student.name} to ${targetCoach?.displayName ?? "your friend"}.`);
-                  router.push("/Landing/Students");
+                  setTransferStatusMessage(`Transfer request sent to ${targetCoach?.displayName ?? "your friend"}. They can accept it from Coach Page.`);
+                  setTransferTargetId("");
                 } catch (error) {
-                  setErrorMessage(error instanceof Error ? error.message : "Unable to transfer student.");
+                  setTransferErrorMessage(error instanceof Error ? error.message : "Unable to transfer student.");
                 } finally {
                   setIsTransferring(false);
                 }
@@ -407,6 +409,12 @@ export default function StudentProfilePage() {
                   >
                     {isTransferring ? "Transferring..." : "Transfer student"}
                   </button>
+                  {transferStatusMessage ? (
+                    <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{transferStatusMessage}</p>
+                  ) : null}
+                  {transferErrorMessage ? (
+                    <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{transferErrorMessage}</p>
+                  ) : null}
                 </>
               ) : (
                 <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-600">

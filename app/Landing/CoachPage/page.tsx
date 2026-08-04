@@ -383,9 +383,9 @@ export default function CoachPage() {
 										<li key={share.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
 											<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 												<div>
-													<p className="font-medium text-slate-950">{share.item.title}</p>
+													<p className="font-medium text-slate-950">{"title" in share.item ? share.item.title : share.item.name}</p>
 													<p className="text-sm text-slate-600">
-														From {share.senderDisplayName} • {share.kind === "conditioning" ? "Conditioning exercise" : "Skill"}
+														From {share.senderDisplayName} • {share.kind === "conditioning" ? "Conditioning exercise" : share.kind === "skill" ? "Skill" : "Student transfer"}
 													</p>
 												</div>
 												<div className="flex items-center gap-2">

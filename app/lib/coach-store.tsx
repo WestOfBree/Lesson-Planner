@@ -61,7 +61,7 @@ type SignInInput = {
   mode: "login" | "register" | "guest";
 };
 
-type ShareKind = "conditioning" | "skill";
+type ShareKind = "conditioning" | "skill" | "student";
 
 type PendingShareRequest = {
   id: string;
@@ -70,7 +70,7 @@ type PendingShareRequest = {
   senderDisplayName: string;
   recipientId: string;
   kind: ShareKind;
-  item: LibraryItem | SkillLibraryItem;
+  item: LibraryItem | SkillLibraryItem | StudentProfileData;
   createdAt: string;
   status: "pending";
 };
@@ -536,7 +536,7 @@ const ensureInitialized = () => {
             const kind = data.kind === "skill" ? "skill" : "conditioning";
             const item = data.item;
 
-            if (!senderId || !recipientId || !item || data.status !== "pending") {
+            if (!senderId || !recipientId || !item || data.status !== "pending" || (data.kind !== "skill" && data.kind !== "conditioning")) {
               return null;
             }
 
@@ -546,14 +546,14 @@ const ensureInitialized = () => {
               senderEmail,
               senderDisplayName: senderDisplayName || coachNameFromEmail(senderEmail || senderId),
               recipientId,
-              kind,
-              item,
+              kind: kind as "skill" | "conditioning",
+              item: item as LibraryItem | SkillLibraryItem,
               createdAt: toIsoDate(data.createdAt),
               status: "pending",
             } satisfies PendingShareRequest;
           })
-          .filter((share): share is PendingShareRequest => share !== null)
-          .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+          .filter((share) => share !== null)
+          .sort((left, right) => right.createdAt.localeCompare(left.createdAt)) as PendingShareRequest[];
 
         cachedState = mergeState({ incomingShares });
         notify();
@@ -1044,7 +1044,7 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
 
     const shareData = shareSnapshot.data() as {
       kind?: ShareKind;
-      item?: LibraryItem | SkillLibraryItem;
+      item?: LibraryItem | SkillLibraryItem | StudentProfileData;
       recipientId?: string;
       senderId?: string;
       status?: "pending";
@@ -1109,6 +1109,24 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
         ...current,
         deletedSkillExerciseIds: current.deletedSkillExerciseIds.filter((id) => id !== acceptedItem.id),
         skillExercises: [acceptedItem, ...current.skillExercises],
+      }));
+    } else if (shareData.kind === "student") {
+      const item = shareData.item as StudentProfileData | undefined;
+
+      if (!item) {
+        throw new Error("The shared student profile could not be loaded.");
+      }
+
+      const acceptedStudent: StudentProfileData = normalizeStudent({
+        ...item,
+        id: createId("student"),
+        classIds: [],
+        lastUpdated: new Date().toISOString(),
+      });
+
+      persistState((current) => ({
+        ...current,
+        students: [acceptedStudent, ...current.students],
       }));
     } else {
       throw new Error("Unsupported shared item type.");
@@ -1598,31 +1616,29 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
       throw new Error("Student could not be found.");
     }
 
-    const targetStateSnapshot = await getDoc(coachStateRef(friend.id));
-    const targetState = readPersistedState(targetStateSnapshot.data());
-    const targetStudents = (targetState.students ?? []).map((entry) => normalizeStudent(entry));
+    const senderName = cachedState.currentCoach?.displayName || user.displayName || coachNameFromEmail(user.email ?? "");
+    const shareId = createId("share");
     const transferredStudent: StudentProfileData = {
       ...student,
-      id: createId("student"),
       classIds: [],
       lastUpdated: new Date().toISOString(),
     };
-    const nextLocalState = removeStudentFromState(cachedState, student.id);
 
-    const batch = writeBatch(db);
-    batch.set(
-      coachStateRef(friend.id),
+    await setDoc(
+      incomingShareRef(friend.id, shareId),
       {
-        students: [transferredStudent, ...targetStudents],
-        updatedAt: serverTimestamp(),
+        id: shareId,
+        senderId: user.uid,
+        senderEmail: user.email?.trim().toLowerCase() ?? "",
+        senderDisplayName: senderName,
+        recipientId: friend.id,
+        kind: "student",
+        item: transferredStudent,
+        status: "pending",
+        createdAt: serverTimestamp(),
       },
       { merge: true },
     );
-    batch.set(coachStateRef(user.uid), serializeState(nextLocalState), { merge: true });
-    await batch.commit();
-
-    cachedState = nextLocalState;
-    notify();
   };
 
   const assignLessonPlanToClass = (input: NewLessonPlanInput) => {
