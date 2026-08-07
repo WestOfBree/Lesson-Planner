@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #f7f9ff;
   --foreground: #1f2637;
@@ -9,8 +11,8 @@
   --color-secondary: #0891b2;
   --color-accent-a: #f59e0b;
   --color-accent-b: #f43f5e;
-  --card: rgba(255, 255, 255, 0.86);
-  --card-muted: rgba(255, 255, 255, 0.74);
+  --card: #ffffff;
+  --card-muted: #f8fafc;
   --border-soft: rgba(79, 70, 229, 0.24);
   --shadow-soft: 0 12px 30px rgba(79, 70, 229, 0.1), 0 2px 8px rgba(8, 145, 178, 0.06);
 }
@@ -27,11 +29,18 @@
 }
 
 body {
+  position: relative;
+  isolation: isolate;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), sans-serif;
   min-height: 100vh;
   transition: background-color 300ms ease, color 250ms ease;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
 }
 
 body::before {
@@ -396,6 +405,64 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+html.theme-transitioning,
+html.theme-transitioning body,
+html.theme-transitioning body::before,
+html.theme-transitioning body::after,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition:
+    background-color 240ms ease,
+    color 240ms ease,
+    border-color 240ms ease,
+    box-shadow 240ms ease,
+    opacity 240ms ease !important;
+  transition-delay: 0ms !important;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 260ms;
+  animation-timing-function: ease;
+}
+
+::view-transition-old(root) {
+  animation-name: theme-fade-out;
+}
+
+::view-transition-new(root) {
+  animation-name: theme-fade-in;
+}
+
+@keyframes theme-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes theme-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 html.dark body {
   background: #0b1020;
   color: #e2e8f0;
@@ -529,7 +596,7 @@ html.dark textarea:focus {
 }
 
 .theme-toggle {
-  transition: transform 180ms ease, box-shadow 220ms ease;
+  transition: box-shadow 220ms ease;
 }
 
 html:not(.dark) .theme-toggle:hover {
@@ -541,50 +608,16 @@ html.dark .theme-toggle:hover {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  body::before {
-    animation: ambientPulse 14s ease-in-out infinite alternate;
-  }
-
-  main {
-    animation: pageReveal 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  main > * {
-    animation: itemRise 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  main > *:nth-child(2) {
-    animation-delay: 45ms;
-  }
-
-  main > *:nth-child(3) {
-    animation-delay: 90ms;
-  }
-
-  main > *:nth-child(4) {
-    animation-delay: 135ms;
-  }
-
   a[class],
   button,
   input,
   select,
   textarea {
     transition:
-      transform 160ms ease,
       box-shadow 220ms ease,
       background-color 220ms ease,
       border-color 220ms ease,
       color 220ms ease;
-  }
-
-  a[class]:hover,
-  button:hover {
-    transform: translateY(-1px);
-  }
-
-  .theme-toggle:hover .theme-toggle-thumb {
-    animation: toggleBob 850ms ease-in-out infinite;
   }
 }
 
@@ -599,49 +632,3 @@ html.dark .theme-toggle:hover {
   }
 }
 
-@keyframes ambientPulse {
-  from {
-    opacity: 0.9;
-    filter: saturate(104%);
-  }
-
-  to {
-    opacity: 1;
-    filter: saturate(118%);
-  }
-}
-
-@keyframes pageReveal {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes itemRise {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes toggleBob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-2px);
-  }
-}

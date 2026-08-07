@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCoachApp } from "@/app/lib/coach-store";
+import { useActionResponse } from "@/app/lib/action-response";
 import {faEye, faEyeSlash} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -11,8 +12,8 @@ export default function LoginModule() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const [isRegisterMode, setIsRegisterMode] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
   const { signInCoach } = useCoachApp();
+  const { showActionResponse } = useActionResponse();
 
   const resolveAuthErrorMessage = (error) => {
     if (!(error instanceof Error)) {
@@ -28,11 +29,10 @@ export default function LoginModule() {
 
   const submitSession = async (mode) => {
     try {
-      setErrorMessage("");
       await signInCoach({ email, password, mode });
       router.push("/Landing");
     } catch (error) {
-      setErrorMessage(resolveAuthErrorMessage(error));
+      showActionResponse({ tone: "error", message: resolveAuthErrorMessage(error) });
     }
   };
 
@@ -64,12 +64,6 @@ export default function LoginModule() {
           }}
         >
           <label className="block space-y-2">
-
-          {errorMessage ? (
-            <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {errorMessage}
-            </p>
-          ) : null}
 
             <span className="text-sm font-medium text-slate-800">Email</span>
             <input
@@ -194,13 +188,9 @@ export default function LoginModule() {
             </div>
           </label>
 
-          {errorMessage ? (
-            <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</p>
-          ) : null}
-
           <button
             type="submit"
-            className="w-full rounded-2xl border border-rose-200 bg-white px-4 py-3 font-semibold text-rose-700 transition hover:border-rose-500 hover:bg-linear-to-r hover:from-rose-600 hover:via-pink-600 hover:to-fuchsia-600 hover:text-white"
+            className="w-full cursor-pointer rounded-2xl border border-rose-200 bg-white px-4 py-3 font-semibold text-rose-700 transition hover:border-rose-500 hover:bg-linear-to-r hover:from-rose-600 hover:via-pink-600 hover:to-fuchsia-600 hover:text-white dark:border-rose-300/40 dark:bg-slate-800/80 dark:text-rose-200 dark:hover:bg-rose-500/30"
           >
             Sign in
           </button>

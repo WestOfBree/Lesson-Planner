@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import Navbar from "../../../UI/Navbar";
 import { useCoachApp } from "../../../lib/coach-store";
+import { useActionResponse } from "../../../lib/action-response";
 
 const splitValues = (value: string) =>
   value
@@ -43,11 +44,10 @@ export default function ConditioningDetailPage() {
   const exercise = conditioningExercises.find((item) => item.slug === params.exerciseId || item.id === params.exerciseId);
 
   const [isEditing, setIsEditing] = useState(searchParams.get("edit") === "1");
-  const [statusMessage, setStatusMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
   const [shareTargetId, setShareTargetId] = useState("");
   const [isSharing, setIsSharing] = useState(false);
   const [draft, setDraft] = useState<ExerciseFormState | null>(null);
+  const { showActionResponse } = useActionResponse();
 
   if (!exercise) {
     return (
@@ -166,8 +166,6 @@ export default function ConditioningDetailPage() {
             type="button"
             className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
             onClick={() => {
-              setStatusMessage("");
-              setErrorMessage("");
               setIsEditing((current) => !current);
             }}
           >
@@ -187,23 +185,13 @@ export default function ConditioningDetailPage() {
             Delete exercise
           </button>
 
-          {statusMessage ? (
-            <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{statusMessage}</p>
-          ) : null}
-
-          {errorMessage ? (
-            <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</p>
-          ) : null}
-
           <form
             className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
             onSubmit={async (event) => {
               event.preventDefault();
-              setStatusMessage("");
-              setErrorMessage("");
 
               if (!shareTargetId) {
-                setErrorMessage("Select a coach to share this exercise.");
+                showActionResponse({ tone: "error", message: "Select a coach to share this exercise." });
                 return;
               }
 
@@ -212,10 +200,13 @@ export default function ConditioningDetailPage() {
               try {
                 await shareConditioningExercise(exercise.id, shareTargetId);
                 const targetCoach = friends.find((friend) => friend.id === shareTargetId);
-                setStatusMessage(`Shared ${exercise.title} with ${targetCoach?.displayName ?? "your friend"}. Awaiting their review.`);
+                showActionResponse({
+                  tone: "success",
+                  message: `Shared ${exercise.title} with ${targetCoach?.displayName ?? "your friend"}. Awaiting their review.`,
+                });
                 setShareTargetId("");
               } catch (error) {
-                setErrorMessage(error instanceof Error ? error.message : "Unable to share exercise.");
+                showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to share exercise." });
               } finally {
                 setIsSharing(false);
               }
@@ -257,7 +248,6 @@ export default function ConditioningDetailPage() {
               className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
               onSubmit={(event) => {
                 event.preventDefault();
-                setErrorMessage("");
                 updateConditioningExercise(exercise.id, {
                   title: formState.title,
                   description: formState.description,
@@ -269,7 +259,7 @@ export default function ConditioningDetailPage() {
                   regressions: splitValues(formState.regressions),
                   lessonUse: formState.lessonUse,
                 });
-                setStatusMessage("Conditioning exercise updated.");
+                showActionResponse({ tone: "success", message: "Conditioning exercise updated." });
                 setIsEditing(false);
               }}
             >

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Navbar from "../../UI/Navbar";
 import SkillCard from "../../UI/SkillCard";
 import { useCoachApp } from "@/app/lib/coach-store";
+import { useActionResponse } from "@/app/lib/action-response";
 import type { SkillLibraryItem } from "@/app/lib/coach-data";
 
 const splitValues = (value: string) =>
@@ -16,6 +17,7 @@ const difficultyOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper
 
 export default function SkillsLibraryPage() {
   const { skillExercises, addSkillExercise, lessonPlan, toggleLessonPlanItem } = useCoachApp();
+  const { showActionResponse } = useActionResponse();
   const [showCreateSkill, setShowCreateSkill] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -59,6 +61,7 @@ export default function SkillsLibraryPage() {
                   coachingCues: splitValues(coachingCues),
                   lessonUse,
                 });
+                showActionResponse({ tone: "success", message: "Skill exercise created." });
                 setTitle("");
                 setDescription("");
                 setDifficulty("Beginner");

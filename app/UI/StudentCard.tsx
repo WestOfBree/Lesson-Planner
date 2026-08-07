@@ -11,33 +11,33 @@ const StudentCard = ({ student, classes, onProgressChange }: StudentCardProps) =
   const relatedClasses = classes.filter((classItem) => student.classIds.includes(classItem.id));
 
   return (
-    <article className="rounded-3xl border border-pink-200/70 bg-white p-5 shadow-[0_16px_36px_rgba(190,24,93,0.12)]">
+    <article className="rounded-3xl border border-pink-200/70 bg-white p-5 shadow-[0_16px_36px_rgba(190,24,93,0.12)] transition hover:shadow-[0_22px_42px_rgba(190,24,93,0.18)] dark:border-pink-300/35 dark:bg-slate-900/80 dark:shadow-[0_18px_38px_rgba(2,6,23,0.45)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-pink-700">Student card</p>
-          <h3 className="mt-2 text-xl font-semibold text-slate-950">{student.name}</h3>
-          <p className="mt-1 text-sm text-slate-500">{student.level}</p>
+          <p className="text-xs uppercase tracking-[0.35em] text-pink-700 dark:text-pink-300">Student card</p>
+          <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-100">{student.name}</h3>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">{student.level}</p>
         </div>
-        <div className="rounded-full bg-violet-100 px-3 py-1 text-xs font-medium text-violet-800">
+        <div className="rounded-full bg-violet-100 px-3 py-1 text-xs font-medium text-violet-800 dark:bg-violet-500/20 dark:text-violet-200">
           Progress {student.progress}%
         </div>
       </div>
 
-      <p className="mt-4 text-sm leading-6 text-slate-600">{student.notes || "No notes added yet."}</p>
+      <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{student.notes || "No notes added yet."}</p>
 
-      <div className="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
+      <div className="mt-4 grid gap-3 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-2">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Focus</p>
-          <p className="mt-1 font-medium text-slate-800">{student.focus || "General development"}</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">Focus</p>
+          <p className="mt-1 font-medium text-slate-800 dark:text-slate-200">{student.focus || "General development"}</p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Last updated</p>
-          <p className="mt-1 font-medium text-slate-800">{new Date(student.lastUpdated).toLocaleDateString()}</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">Last updated</p>
+          <p className="mt-1 font-medium text-slate-800 dark:text-slate-200">{new Date(student.lastUpdated).toLocaleDateString()}</p>
         </div>
       </div>
 
       <div className="mt-4 space-y-2">
-        <div className="flex items-center justify-between text-sm text-slate-600">
+        <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
           <span>Progress tracking</span>
           <span>{student.progress}%</span>
         </div>
@@ -52,26 +52,26 @@ const StudentCard = ({ student, classes, onProgressChange }: StudentCardProps) =
       </div>
 
       <div className="mt-4">
-        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Class tags</p>
+        <p className="text-xs uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">Class tags</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {relatedClasses.length ? (
             relatedClasses.map((classItem) => (
-              <span key={classItem.id} className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-medium text-cyan-800">
+              <span key={classItem.id} className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-medium text-cyan-800 dark:bg-cyan-500/20 dark:text-cyan-200">
                 {classItem.name}
               </span>
             ))
           ) : (
-            <span className="text-sm text-slate-500">Not assigned to a class yet.</span>
+            <span className="text-sm text-slate-500 dark:text-slate-300">Not assigned to a class yet.</span>
           )}
         </div>
       </div>
 
       {student.goals.length ? (
         <div className="mt-4">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Goals</p>
-          <ul className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">Goals</p>
+          <ul className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600 dark:text-slate-300">
             {student.goals.map((goal) => (
-              <li key={goal} className="rounded-full bg-pink-100 px-3 py-1 text-pink-800">
+              <li key={goal} className="rounded-full bg-pink-100 px-3 py-1 text-pink-800 dark:bg-pink-500/20 dark:text-pink-200">
                 {goal}
               </li>
             ))}
@@ -82,13 +82,13 @@ const StudentCard = ({ student, classes, onProgressChange }: StudentCardProps) =
       <div className="mt-5 flex items-center gap-2">
         <Link
           href={`/Landing/Students/${student.id}`}
-          className="inline-flex cursor-pointer rounded-full border border-pink-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-pink-300 hover:bg-pink-50"
+          className="inline-flex cursor-pointer rounded-full border border-pink-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-pink-300 hover:bg-pink-50 dark:border-pink-300/40 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-700/80"
         >
           Open student profile
         </Link>
         <Link
           href={`/Landing/Students/${student.id}?edit=1`}
-          className="inline-flex cursor-pointer rounded-full bg-violet-100 px-3 py-2 text-xs font-semibold text-violet-800 transition hover:bg-violet-200"
+          className="inline-flex cursor-pointer rounded-full bg-violet-100 px-3 py-2 text-xs font-semibold text-violet-800 transition hover:bg-violet-200 dark:bg-violet-500/20 dark:text-violet-200 dark:hover:bg-violet-500/35"
         >
           Edit
         </Link>

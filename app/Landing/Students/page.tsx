@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Navbar from "../../UI/Navbar";
 import StudentCard from "../../UI/StudentCard";
 import { useCoachApp } from "@/app/lib/coach-store";
+import { useActionResponse } from "@/app/lib/action-response";
 import type { CoachClassData, StudentProfileData } from "@/app/lib/coach-data";
 
 const splitValues = (value: string) =>
@@ -16,6 +17,7 @@ const levelOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper Inte
 
 export default function StudentsPage() {
   const { classes, students, skillExercises, addStudent, updateStudentProgress } = useCoachApp();
+  const { showActionResponse } = useActionResponse();
   const [name, setName] = useState("");
   const [level, setLevel] = useState("Beginner");
   const [focus, setFocus] = useState("");
@@ -59,6 +61,7 @@ export default function StudentsPage() {
                 struggles: splitValues(struggles),
                 progress,
               });
+              showActionResponse({ tone: "success", message: "Student profile saved." });
               setName("");
               setLevel("Beginner");
               setFocus("");

@@ -4,6 +4,7 @@ import { useState } from "react";
 import ExerciseCard from "../../UI/ExerciseCard";
 import Navbar from "../../UI/Navbar";
 import { useCoachApp } from "@/app/lib/coach-store";
+import { useActionResponse } from "@/app/lib/action-response";
 import type { LibraryItem } from "@/app/lib/coach-data";
 
 const splitValues = (value: string) =>
@@ -16,6 +17,7 @@ const difficultyOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper
 
 export default function ConditioningLibraryPage() {
   const { conditioningExercises, addConditioningExercise, lessonPlan, toggleLessonPlanItem } = useCoachApp();
+  const { showActionResponse } = useActionResponse();
   const [showCreateExercise, setShowCreateExercise] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -67,6 +69,7 @@ export default function ConditioningLibraryPage() {
                   regressions: splitValues(regressions),
                   lessonUse,
                 });
+                showActionResponse({ tone: "success", message: "Conditioning exercise created." });
                 setTitle("");
                 setDescription("");
                 setDifficulty("Beginner");
@@ -187,7 +190,7 @@ export default function ConditioningLibraryPage() {
 
                 <button
                   type="submit"
-                  className="w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800"
+                  className="w-full cursor-pointer rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800"
                 >
                   Add conditioning exercise
                 </button>

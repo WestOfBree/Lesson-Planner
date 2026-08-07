@@ -170,7 +170,7 @@ export default function LandingPage() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="landing-launch-link rounded-2xl border border-indigo-200/70 bg-indigo-100/75 bg-linear-to-r from-indigo-200 via-cyan-100 to-white px-4 py-3 transition hover:-translate-y-0.5 hover:border-indigo-300 hover:from-indigo-300 hover:via-cyan-200 hover:to-indigo-50 dark:border-indigo-300/35 dark:from-indigo-950/65 dark:via-slate-900 dark:to-cyan-950/45 dark:hover:border-cyan-300/55"
+                  className="landing-launch-link rounded-2xl border border-indigo-200/70 bg-indigo-100/75 bg-linear-to-r from-indigo-200 via-cyan-100 to-white px-4 py-3 transition hover:border-indigo-300 hover:from-indigo-300 hover:via-cyan-200 hover:to-indigo-50 dark:border-indigo-300/35 dark:from-indigo-950/65 dark:via-slate-900 dark:to-cyan-950/45 dark:hover:border-cyan-300/55"
                 >
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-500 dark:text-indigo-300">0{index + 1}</p>
                   <h3 className="mt-1 text-xl font-semibold text-indigo-950 dark:text-indigo-50">{link.title}</h3>
@@ -189,7 +189,7 @@ export default function LandingPage() {
                     <Link
                       key={student.id}
                       href={`/Landing/Students/${student.id}`}
-                      className="landing-student-row block rounded-2xl border border-cyan-200/70 bg-cyan-50/70 px-4 py-3 transition hover:-translate-y-0.5 hover:border-cyan-300/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 dark:border-cyan-300/30 dark:bg-slate-800/80 dark:hover:border-cyan-200/60 dark:focus-visible:ring-cyan-200/60"
+                      className="landing-student-row block rounded-2xl border border-cyan-200/70 bg-cyan-50/70 px-4 py-3 transition hover:border-cyan-300/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 dark:border-cyan-300/30 dark:bg-slate-800/80 dark:hover:border-cyan-200/60 dark:focus-visible:ring-cyan-200/60"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div>

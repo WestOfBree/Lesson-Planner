@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import Navbar from "../../../UI/Navbar";
 import { useCoachApp } from "../../../lib/coach-store";
+import { useActionResponse } from "../../../lib/action-response";
 import type { SkillLibraryItem } from "../../../lib/coach-data";
 
 const splitValues = (value: string) =>
@@ -44,8 +45,6 @@ export default function SkillDetailPage() {
   );
 
   const [isEditing, setIsEditing] = useState(searchParams.get("edit") === "1");
-  const [statusMessage, setStatusMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
   const [shareTargetId, setShareTargetId] = useState("");
   const [isSharing, setIsSharing] = useState(false);
   const [title, setTitle] = useState(formDefaults.title);
@@ -53,6 +52,7 @@ export default function SkillDetailPage() {
   const [difficulty, setDifficulty] = useState(formDefaults.difficulty);
   const [coachingCues, setCoachingCues] = useState(formDefaults.coachingCues);
   const [lessonUse, setLessonUse] = useState(formDefaults.lessonUse);
+  const { showActionResponse } = useActionResponse();
 
   if (!skill) {
     return (
@@ -127,8 +127,6 @@ export default function SkillDetailPage() {
             type="button"
             className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
             onClick={() => {
-              setStatusMessage("");
-              setErrorMessage("");
               setIsEditing((current) => !current);
             }}
           >
@@ -148,23 +146,13 @@ export default function SkillDetailPage() {
             Delete skill
           </button>
 
-          {statusMessage ? (
-            <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{statusMessage}</p>
-          ) : null}
-
-          {errorMessage ? (
-            <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</p>
-          ) : null}
-
           <form
             className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
             onSubmit={async (event) => {
               event.preventDefault();
-              setStatusMessage("");
-              setErrorMessage("");
 
               if (!shareTargetId) {
-                setErrorMessage("Select a coach to share this skill.");
+                showActionResponse({ tone: "error", message: "Select a coach to share this skill." });
                 return;
               }
 
@@ -173,10 +161,13 @@ export default function SkillDetailPage() {
               try {
                 await shareSkillExercise(skill.id, shareTargetId);
                 const targetCoach = friends.find((friend) => friend.id === shareTargetId);
-                setStatusMessage(`Shared ${skill.title} with ${targetCoach?.displayName ?? "your friend"}. Awaiting their review.`);
+                showActionResponse({
+                  tone: "success",
+                  message: `Shared ${skill.title} with ${targetCoach?.displayName ?? "your friend"}. Awaiting their review.`,
+                });
                 setShareTargetId("");
               } catch (error) {
-                setErrorMessage(error instanceof Error ? error.message : "Unable to share skill.");
+                showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to share skill." });
               } finally {
                 setIsSharing(false);
               }
@@ -218,7 +209,6 @@ export default function SkillDetailPage() {
               className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
               onSubmit={(event) => {
                 event.preventDefault();
-                setErrorMessage("");
                 updateSkillExercise(skill.id, {
                   title,
                   description,
@@ -226,7 +216,7 @@ export default function SkillDetailPage() {
                   coachingCues: splitValues(coachingCues),
                   lessonUse,
                 });
-                setStatusMessage("Skill updated.");
+                showActionResponse({ tone: "success", message: "Skill updated." });
                 setIsEditing(false);
               }}
             >

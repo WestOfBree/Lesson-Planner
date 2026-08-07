@@ -41,6 +41,7 @@ import {
   defaultSkillExercises,
   slugify,
   type CoachClassData,
+  type ConditioningPrescription,
   type CoachSession,
   type LibraryItem,
   type LessonPlanState,
@@ -189,21 +190,71 @@ const CoachContext = createContext<CoachStore | null>(null);
 
 const unique = (values: string[]) => Array.from(new Set(values.filter(Boolean)));
 
+const normalizePositiveInteger = (value: unknown) => {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return undefined;
+  }
+
+  return Math.round(numericValue);
+};
+
+const normalizeConditioningPrescription = (value: unknown): ConditioningPrescription => {
+  if (typeof value === "number") {
+    const reps = normalizePositiveInteger(value);
+    return reps ? { reps } : {};
+  }
+
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  const prescription = value as {
+    reps?: unknown;
+    holdSeconds?: unknown;
+    sets?: unknown;
+  };
+
+  const reps = normalizePositiveInteger(prescription.reps);
+  const holdSeconds = normalizePositiveInteger(prescription.holdSeconds);
+  const sets = normalizePositiveInteger(prescription.sets);
+
+  const normalized: ConditioningPrescription = {};
+
+  if (reps) {
+    normalized.reps = reps;
+  }
+
+  if (holdSeconds) {
+    normalized.holdSeconds = holdSeconds;
+  }
+
+  if (sets) {
+    normalized.sets = sets;
+  }
+
+  return normalized;
+};
+
 const createId = (prefix: string) => `${prefix}-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`;
 
 const normalizeLessonPlan = (plan: AssignedLessonPlan): AssignedLessonPlan => ({
   ...plan,
   studentIds: plan.studentIds ?? [],
   conditioningIds: plan.conditioningIds ?? [],
-  conditioningReps: Object.entries(plan.conditioningReps ?? {}).reduce<Record<string, number>>((current, [itemId, value]) => {
-    const normalizedValue = Number(value);
+  conditioningReps: Object.entries(plan.conditioningReps ?? {}).reduce<Record<string, ConditioningPrescription>>(
+    (current, [itemId, value]) => {
+      const normalizedValue = normalizeConditioningPrescription(value);
 
-    if (Number.isFinite(normalizedValue) && normalizedValue > 0) {
-      current[itemId] = Math.round(normalizedValue);
-    }
+      if (Object.keys(normalizedValue).length) {
+        current[itemId] = normalizedValue;
+      }
 
-    return current;
-  }, {}),
+      return current;
+    },
+    {},
+  ),
   skillIds: plan.skillIds ?? [],
   perStudentSkillIds: plan.perStudentSkillIds ?? {},
   outcomeNotes: plan.outcomeNotes ?? "",
@@ -1666,11 +1717,11 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     const resolvedTitle = title || `${classItem.name} - ${classDate}`;
     const validStudentIds = studentIds.filter((studentId) => classItem.studentIds.includes(studentId));
     const lessonScopeStudentIds = validStudentIds.length ? validStudentIds : [];
-    const normalizedConditioningReps = conditioningIds.reduce<Record<string, number>>((current, itemId) => {
-      const rawReps = Number(conditioningReps[itemId]);
+    const normalizedConditioningReps = conditioningIds.reduce<Record<string, ConditioningPrescription>>((current, itemId) => {
+      const normalizedPrescription = normalizeConditioningPrescription(conditioningReps[itemId]);
 
-      if (Number.isFinite(rawReps) && rawReps > 0) {
-        current[itemId] = Math.round(rawReps);
+      if (Object.keys(normalizedPrescription).length) {
+        current[itemId] = normalizedPrescription;
       }
 
       return current;
@@ -1769,11 +1820,11 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     const resolvedTitle = title || `${classItem.name} - ${classDate}`;
     const validStudentIds = studentIds.filter((studentId) => classItem.studentIds.includes(studentId));
     const lessonScopeStudentIds = validStudentIds.length ? validStudentIds : [];
-    const normalizedConditioningReps = conditioningIds.reduce<Record<string, number>>((current, itemId) => {
-      const rawReps = Number(conditioningReps[itemId]);
+    const normalizedConditioningReps = conditioningIds.reduce<Record<string, ConditioningPrescription>>((current, itemId) => {
+      const normalizedPrescription = normalizeConditioningPrescription(conditioningReps[itemId]);
 
-      if (Number.isFinite(rawReps) && rawReps > 0) {
-        current[itemId] = Math.round(rawReps);
+      if (Object.keys(normalizedPrescription).length) {
+        current[itemId] = normalizedPrescription;
       }
 
       return current;

@@ -32,6 +32,12 @@ export interface CoachClassData {
   studentIds: string[];
 }
 
+export interface ConditioningPrescription {
+  reps?: number;
+  holdSeconds?: number;
+  sets?: number;
+}
+
 export interface AssignedLessonPlan {
   id: string;
   title: string;
@@ -40,7 +46,7 @@ export interface AssignedLessonPlan {
   notes: string;
   studentIds: string[];
   conditioningIds: string[];
-  conditioningReps: Record<string, number>;
+  conditioningReps: Record<string, ConditioningPrescription>;
   skillIds: string[];
   perStudentSkillIds: Record<string, string[]>;
   outcomeNotes: string;
@@ -130,7 +136,7 @@ export interface NewLessonPlanInput {
   notes: string;
   studentIds: string[];
   conditioningIds: string[];
-  conditioningReps: Record<string, number>;
+  conditioningReps: Record<string, ConditioningPrescription>;
   skillIds: string[];
   perStudentSkillIds: Record<string, string[]>;
   perStudentOutcomeNotes?: Record<string, string>;

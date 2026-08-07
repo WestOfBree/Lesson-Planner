@@ -5,6 +5,8 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import Navbar from "../../../UI/Navbar";
 import { useCoachApp } from "../../../lib/coach-store";
+import { useActionResponse } from "../../../lib/action-response";
+import type { ConditioningPrescription } from "../../../lib/coach-data";
 
 export default function LessonPlanDetailPage() {
   const params = useParams<{ lessonId: string }>();
@@ -34,7 +36,7 @@ export default function LessonPlanDetailPage() {
   const [outcomeNotes, setOutcomeNotes] = useState(lessonPlan?.outcomeNotes ?? "");
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>(lessonPlan?.studentIds ?? []);
   const [selectedConditioningIds, setSelectedConditioningIds] = useState<string[]>(lessonPlan?.conditioningIds ?? []);
-  const [conditioningRepsById, setConditioningRepsById] = useState<Record<string, number>>(lessonPlan?.conditioningReps ?? {});
+  const [conditioningRepsById, setConditioningRepsById] = useState<Record<string, ConditioningPrescription>>(lessonPlan?.conditioningReps ?? {});
   const [selectedClassSkillIds, setSelectedClassSkillIds] = useState<string[]>(lessonPlan?.skillIds ?? []);
   const [perStudentSkillIds, setPerStudentSkillIds] = useState<Record<string, string[]>>(lessonPlan?.perStudentSkillIds ?? {});
   const [perStudentOutcomeNotes, setPerStudentOutcomeNotes] = useState<Record<string, string>>(
@@ -44,8 +46,22 @@ export default function LessonPlanDetailPage() {
     Boolean(Object.keys(lessonPlan?.perStudentOutcomeNotes ?? {}).length),
   );
   const [todayDateKey] = useState(() => new Date().toISOString().slice(0, 10));
-  const [statusMessage, setStatusMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const { showActionResponse } = useActionResponse();
+
+  const parsePositiveNumber = (value: string) => {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) && numericValue > 0 ? Math.round(numericValue) : undefined;
+  };
+
+  const formatConditioningPrescription = (prescription: ConditioningPrescription | undefined) => {
+    const parts = [
+      prescription?.reps ? `${prescription.reps} reps` : null,
+      prescription?.holdSeconds ? `${prescription.holdSeconds}s hold` : null,
+      prescription?.sets ? `${prescription.sets} sets` : null,
+    ].filter((part): part is string => Boolean(part));
+
+    return parts.length ? parts.join(" • ") : "No prescription";
+  };
 
   const selectedClass = useMemo(
     () => classes.find((entry) => entry.id === classId),
@@ -131,14 +147,6 @@ export default function LessonPlanDetailPage() {
           </div>
         </section>
 
-        {errorMessage ? (
-          <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</p>
-        ) : null}
-
-        {statusMessage ? (
-          <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{statusMessage}</p>
-        ) : null}
-
         <section className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
           <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.08)] sm:p-8">
             {isEditing ? (
@@ -146,8 +154,6 @@ export default function LessonPlanDetailPage() {
                 className="space-y-5"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  setErrorMessage("");
-                  setStatusMessage("");
 
                   try {
                     updateAssignedLessonPlan(lessonPlan.id, {
@@ -163,10 +169,13 @@ export default function LessonPlanDetailPage() {
                       skillIds: selectedClassSkillIds,
                       perStudentSkillIds,
                     });
-                    setStatusMessage("Lesson plan changes saved.");
+                    showActionResponse({ tone: "success", message: "Lesson plan changes saved." });
                     setIsEditing(false);
                   } catch (error) {
-                    setErrorMessage(error instanceof Error ? error.message : "Unable to update lesson plan.");
+                    showActionResponse({
+                      tone: "error",
+                      message: error instanceof Error ? error.message : "Unable to update lesson plan.",
+                    });
                   }
                 }}
               >
@@ -333,34 +342,15 @@ export default function LessonPlanDetailPage() {
                   <div className="grid max-h-128 gap-2 overflow-y-auto pr-1">
                     {conditioningExercises.map((item) => {
                       const isSelected = selectedConditioningIds.includes(item.id);
+                      const currentPrescription = conditioningRepsById[item.id] ?? {};
 
                       return (
                         <label
                           key={item.id}
-                          className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+                          className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
                         >
-                          <span className="flex-1">{item.title}</span>
-                          <div className="flex items-center gap-2">
-                            {isSelected ? (
-                              <input
-                                type="number"
-                                min={1}
-                                step={1}
-                                value={conditioningRepsById[item.id] ?? 8}
-                                onChange={(event) => {
-                                  const nextValue = Number(event.target.value);
-
-                                  setConditioningRepsById((current) => ({
-                                    ...current,
-                                    [item.id]: Number.isFinite(nextValue) && nextValue > 0 ? Math.round(nextValue) : 1,
-                                  }));
-                                }}
-                                className="w-20 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-teal-600"
-                                aria-label={`${item.title} reps`}
-                              />
-                            ) : (
-                              <span className="w-20 text-right text-xs text-slate-400">set reps</span>
-                            )}
+                          <div className="flex items-start justify-between gap-3">
+                            <span className="flex-1 pt-1">{item.title}</span>
                             <input
                               type="checkbox"
                               checked={isSelected}
@@ -375,7 +365,10 @@ export default function LessonPlanDetailPage() {
 
                                 setConditioningRepsById((current) => {
                                   if (event.target.checked) {
-                                    return { ...current, [item.id]: current[item.id] ?? 8 };
+                                    return {
+                                      ...current,
+                                      [item.id]: current[item.id] ?? { reps: 8 },
+                                    };
                                   }
 
                                   const next = { ...current };
@@ -383,9 +376,84 @@ export default function LessonPlanDetailPage() {
                                   return next;
                                 });
                               }}
-                              className="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-700"
+                              className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-700"
                             />
                           </div>
+
+                          {isSelected ? (
+                            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                              <label className="space-y-1">
+                                <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Reps</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  step={1}
+                                  value={currentPrescription.reps ?? ""}
+                                  onChange={(event) => {
+                                    const nextReps = parsePositiveNumber(event.target.value);
+
+                                    setConditioningRepsById((current) => ({
+                                      ...current,
+                                      [item.id]: {
+                                        ...(current[item.id] ?? {}),
+                                        reps: nextReps,
+                                      },
+                                    }));
+                                  }}
+                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-teal-600"
+                                  aria-label={`${item.title} reps`}
+                                />
+                              </label>
+
+                              <label className="space-y-1">
+                                <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Hold (sec)</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  step={1}
+                                  value={currentPrescription.holdSeconds ?? ""}
+                                  onChange={(event) => {
+                                    const nextHoldSeconds = parsePositiveNumber(event.target.value);
+
+                                    setConditioningRepsById((current) => ({
+                                      ...current,
+                                      [item.id]: {
+                                        ...(current[item.id] ?? {}),
+                                        holdSeconds: nextHoldSeconds,
+                                      },
+                                    }));
+                                  }}
+                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-teal-600"
+                                  aria-label={`${item.title} hold seconds`}
+                                />
+                              </label>
+
+                              <label className="space-y-1">
+                                <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Sets</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  step={1}
+                                  value={currentPrescription.sets ?? ""}
+                                  onChange={(event) => {
+                                    const nextSets = parsePositiveNumber(event.target.value);
+
+                                    setConditioningRepsById((current) => ({
+                                      ...current,
+                                      [item.id]: {
+                                        ...(current[item.id] ?? {}),
+                                        sets: nextSets,
+                                      },
+                                    }));
+                                  }}
+                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-teal-600"
+                                  aria-label={`${item.title} sets`}
+                                />
+                              </label>
+                            </div>
+                          ) : (
+                            <p className="mt-2 text-xs text-slate-400">Select to add prescription details.</p>
+                          )}
                         </label>
                       );
                     })}
@@ -556,7 +624,7 @@ export default function LessonPlanDetailPage() {
                     <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                        <p className="text-xs text-slate-500">{lessonPlan.conditioningReps?.[item.id] ?? 8} reps</p>
+                        <p className="text-xs text-slate-500">{formatConditioningPrescription(lessonPlan.conditioningReps?.[item.id])}</p>
                       </div>
                     </div>
                   ))}

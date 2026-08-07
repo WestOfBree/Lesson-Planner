@@ -21,6 +21,9 @@
 - Avoid inline styles unless absolutely necessary
 - Use consistent spacing and color schemes
 - Ensure responsive design (mobile-first approach)
+- Ensure every created component is visually appealing and accessible
+- Ensure that all buttons have a hover state, cursor set to pointer, and are accessible via keyboard navigation
+- Ensure each item has a dark and light mode variant, and that the application is responsive and accessible to all users
 
 ### React Patterns
 

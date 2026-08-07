@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Navbar from "../../UI/Navbar";
 import { useCoachApp } from "../../lib/coach-store";
+import { useActionResponse } from "../../lib/action-response";
 
 export default function CoachPage() {
 	const {
@@ -23,19 +24,14 @@ export default function CoachPage() {
 	const [currentPassword, setCurrentPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
-	const [statusMessage, setStatusMessage] = useState("");
-	const [errorMessage, setErrorMessage] = useState("");
 	const [friendSearchEmail, setFriendSearchEmail] = useState("");
 	const [friendSearchResult, setFriendSearchResult] = useState<{ id: string; email: string; displayName: string } | null>(null);
-	const [friendStatusMessage, setFriendStatusMessage] = useState("");
-	const [friendErrorMessage, setFriendErrorMessage] = useState("");
+	const { showActionResponse } = useActionResponse();
 
 	const isGuest = currentCoach?.isGuest ?? true;
 
 	const handleProfileSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
-		setErrorMessage("");
-		setStatusMessage("");
 
 		const formData = new FormData(event.currentTarget);
 		const displayName = String(formData.get("displayName") ?? "");
@@ -43,19 +39,17 @@ export default function CoachPage() {
 
 		try {
 			await updateCoachProfile({ displayName, email });
-			setStatusMessage("Profile details saved.");
+			showActionResponse({ tone: "success", message: "Profile details saved." });
 		} catch (error) {
-			setErrorMessage(error instanceof Error ? error.message : "Unable to save profile details.");
+			showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to save profile details." });
 		}
 	};
 
 	const handlePasswordSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
-		setErrorMessage("");
-		setStatusMessage("");
 
 		if (newPassword !== confirmPassword) {
-			setErrorMessage("New password and confirmation must match.");
+			showActionResponse({ tone: "error", message: "New password and confirmation must match." });
 			return;
 		}
 
@@ -64,35 +58,33 @@ export default function CoachPage() {
 			setCurrentPassword("");
 			setNewPassword("");
 			setConfirmPassword("");
-			setStatusMessage("Password updated.");
+			showActionResponse({ tone: "success", message: "Password updated." });
 		} catch (error) {
-			setErrorMessage(error instanceof Error ? error.message : "Unable to update password.");
+			showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to update password." });
 		}
 	};
 
 	const handleFriendSearch = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
-		setFriendErrorMessage("");
-		setFriendStatusMessage("");
 		setFriendSearchResult(null);
 
 		try {
 			const result = await searchCoachByEmail(friendSearchEmail);
 
 			if (!result) {
-				setFriendStatusMessage("No coach found with that email.");
+				showActionResponse({ tone: "info", message: "No coach found with that email." });
 				return;
 			}
 
 			if (friends.some((friend) => friend.id === result.id)) {
-				setFriendStatusMessage("That coach is already in your friends list.");
+				showActionResponse({ tone: "info", message: "That coach is already in your friends list." });
 				return;
 			}
 
 			setFriendSearchResult(result);
-			setFriendStatusMessage("Coach found. Send a friend request to connect.");
+			showActionResponse({ tone: "success", message: "Coach found. Send a friend request to connect." });
 		} catch (error) {
-			setFriendErrorMessage(error instanceof Error ? error.message : "Unable to search for coach.");
+			showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to search for coach." });
 		}
 	};
 
@@ -101,67 +93,53 @@ export default function CoachPage() {
 			return;
 		}
 
-		setFriendErrorMessage("");
-		setFriendStatusMessage("");
-
 		try {
 			await sendFriendRequest(friendSearchResult.id);
-			setFriendStatusMessage(`Friend request sent to ${friendSearchResult.displayName}.`);
+			showActionResponse({ tone: "success", message: `Friend request sent to ${friendSearchResult.displayName}.` });
 			setFriendSearchEmail("");
 			setFriendSearchResult(null);
 		} catch (error) {
-			setFriendErrorMessage(error instanceof Error ? error.message : "Unable to send friend request.");
+			showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to send friend request." });
 		}
 	};
 
 	const handleApproveFriendRequest = async (requesterId: string) => {
-		setFriendErrorMessage("");
-		setFriendStatusMessage("");
-
 		try {
 			const pendingRequest = incomingFriendRequests.find((request) => request.id === requesterId);
 			await approveFriendRequest(requesterId);
-			setFriendStatusMessage(
-				pendingRequest ? `${pendingRequest.displayName} is now your friend.` : "Friend request approved.",
-			);
+			showActionResponse({
+				tone: "success",
+				message: pendingRequest ? `${pendingRequest.displayName} is now your friend.` : "Friend request approved.",
+			});
 		} catch (error) {
-			setFriendErrorMessage(error instanceof Error ? error.message : "Unable to approve friend request.");
+			showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to approve friend request." });
 		}
 	};
 
 	const handleDeclineFriendRequest = async (requesterId: string) => {
-		setFriendErrorMessage("");
-		setFriendStatusMessage("");
-
 		try {
 			await declineFriendRequest(requesterId);
-			setFriendStatusMessage("Friend request declined.");
+			showActionResponse({ tone: "success", message: "Friend request declined." });
 		} catch (error) {
-			setFriendErrorMessage(error instanceof Error ? error.message : "Unable to decline friend request.");
+			showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to decline friend request." });
 		}
 	};
 
 	const handleAcceptSharedItem = async (shareId: string) => {
-		setFriendErrorMessage("");
-		setFriendStatusMessage("");
-
 		try {
 			await acceptSharedItem(shareId);
-			setFriendStatusMessage("Shared item added to your library.");
+			showActionResponse({ tone: "success", message: "Shared item added to your library." });
 		} catch (error) {
-			setFriendErrorMessage(error instanceof Error ? error.message : "Unable to accept shared item.");
+			showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to accept shared item." });
 		}
 	};
 
 	const handleDeclineSharedItem = async (shareId: string) => {
-		setFriendErrorMessage("");
-		setFriendStatusMessage("");
-
 		try {
 			await declineSharedItem(shareId);
-			setFriendStatusMessage("Shared item declined.");
+			showActionResponse({ tone: "success", message: "Shared item declined." });
 		} catch (error) {
-			setFriendErrorMessage(error instanceof Error ? error.message : "Unable to decline shared item.");
+			showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to decline shared item." });
 		}
 	};
 
@@ -183,13 +161,6 @@ export default function CoachPage() {
 						</p>
 					) : null}
 
-					{errorMessage ? (
-						<p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</p>
-					) : null}
-
-					{statusMessage ? (
-						<p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{statusMessage}</p>
-					) : null}
 
 					<div className="mt-8 grid gap-6 lg:grid-cols-2">
 						<form
@@ -295,13 +266,6 @@ export default function CoachPage() {
 						<h3 className="text-lg font-semibold text-slate-950">Friends</h3>
 						<p className="mt-1 text-sm text-slate-600">Search by email to connect with other coaches.</p>
 
-						{friendErrorMessage ? (
-							<p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{friendErrorMessage}</p>
-						) : null}
-
-						{friendStatusMessage ? (
-							<p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{friendStatusMessage}</p>
-						) : null}
 
 						<form className="mt-4 flex flex-col gap-3 sm:flex-row" onSubmit={handleFriendSearch}>
 							<input

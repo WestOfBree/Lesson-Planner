@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import Navbar from "../../../UI/Navbar";
 import { useCoachApp } from "../../../lib/coach-store";
+import { useActionResponse } from "../../../lib/action-response";
 
 const splitValues = (value: string) =>
   value
@@ -73,12 +74,9 @@ export default function StudentProfilePage() {
 
   const [draft, setDraft] = useState<StudentFormState | null>(null);
   const [noteText, setNoteText] = useState("");
-  const [statusMessage, setStatusMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [transferErrorMessage, setTransferErrorMessage] = useState("");
-  const [transferStatusMessage, setTransferStatusMessage] = useState("");
   const [transferTargetId, setTransferTargetId] = useState("");
   const [isTransferring, setIsTransferring] = useState(false);
+  const { showActionResponse } = useActionResponse();
   const availableSkillTitles = useMemo(
     () => unique(skillExercises.map((item) => item.title.trim()).filter(Boolean)),
     [skillExercises],
@@ -152,14 +150,6 @@ export default function StudentProfilePage() {
           </div>
         </section>
 
-        {errorMessage ? (
-          <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</p>
-        ) : null}
-
-        {statusMessage ? (
-          <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{statusMessage}</p>
-        ) : null}
-
         <section className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
           <article className="space-y-6 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.08)] sm:p-8">
             <div>
@@ -171,8 +161,6 @@ export default function StudentProfilePage() {
               className="space-y-4"
               onSubmit={(event) => {
                 event.preventDefault();
-                setErrorMessage("");
-                setStatusMessage("");
 
                 try {
                   updateStudent(student.id, {
@@ -184,9 +172,12 @@ export default function StudentProfilePage() {
                     skillsKnown: formState.skillsKnown,
                     struggles: splitValues(formState.strugglesText),
                   });
-                  setStatusMessage("Student profile details saved.");
+                  showActionResponse({ tone: "success", message: "Student profile details saved." });
                 } catch (error) {
-                  setErrorMessage(error instanceof Error ? error.message : "Unable to save student profile details.");
+                  showActionResponse({
+                    tone: "error",
+                    message: error instanceof Error ? error.message : "Unable to save student profile details.",
+                  });
                 }
               }}
             >
@@ -356,11 +347,8 @@ export default function StudentProfilePage() {
               className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
               onSubmit={async (event) => {
                 event.preventDefault();
-                setTransferErrorMessage("");
-                setTransferStatusMessage("");
-
                 if (!transferTargetId) {
-                  setTransferErrorMessage("Select a coach before transferring this student.");
+                  showActionResponse({ tone: "error", message: "Select a coach before transferring this student." });
                   return;
                 }
 
@@ -377,10 +365,13 @@ export default function StudentProfilePage() {
 
                 try {
                   await transferStudentToCoach(student.id, transferTargetId);
-                  setTransferStatusMessage(`Transfer request sent to ${targetCoach?.displayName ?? "your friend"}. They can accept it from Coach Page.`);
+                  showActionResponse({
+                    tone: "success",
+                    message: `Transfer request sent to ${targetCoach?.displayName ?? "your friend"}. They can accept it from Coach Page.`,
+                  });
                   setTransferTargetId("");
                 } catch (error) {
-                  setTransferErrorMessage(error instanceof Error ? error.message : "Unable to transfer student.");
+                  showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to transfer student." });
                 } finally {
                   setIsTransferring(false);
                 }
@@ -409,12 +400,6 @@ export default function StudentProfilePage() {
                   >
                     {isTransferring ? "Transferring..." : "Transfer student"}
                   </button>
-                  {transferStatusMessage ? (
-                    <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{transferStatusMessage}</p>
-                  ) : null}
-                  {transferErrorMessage ? (
-                    <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{transferErrorMessage}</p>
-                  ) : null}
                 </>
               ) : (
                 <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-600">
@@ -427,15 +412,13 @@ export default function StudentProfilePage() {
               className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
               onSubmit={(event) => {
                 event.preventDefault();
-                setErrorMessage("");
-                setStatusMessage("");
 
                 try {
                   addStudentNote(student.id, noteText);
                   setNoteText("");
-                  setStatusMessage("New coaching note added.");
+                  showActionResponse({ tone: "success", message: "New coaching note added." });
                 } catch (error) {
-                  setErrorMessage(error instanceof Error ? error.message : "Unable to save note.");
+                  showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to save note." });
                 }
               }}
             >
@@ -481,10 +464,8 @@ export default function StudentProfilePage() {
                 type="button"
                 className="w-full cursor-pointer rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800"
                 onClick={() => {
-                  setErrorMessage("");
-                  setStatusMessage("");
                   updateStudentProgress(student.id, formState.progressValue);
-                  setStatusMessage("Progress update saved.");
+                  showActionResponse({ tone: "success", message: "Progress update saved." });
                 }}
               >
                 Save progress update

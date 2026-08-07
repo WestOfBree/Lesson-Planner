@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Navbar from "../../UI/Navbar";
 import { useCoachApp } from "@/app/lib/coach-store";
+import { useActionResponse } from "@/app/lib/action-response";
 import type { CoachClassData, StudentProfileData } from "@/app/lib/coach-data";
 
 const levelOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper Intermediate", "Advanced"];
@@ -37,6 +38,7 @@ const timeOptions = [
 
 export default function ClassesPage() {
   const { classes, students, addClass, updateClass, deleteClass } = useCoachApp();
+  const { showActionResponse } = useActionResponse();
   const [name, setName] = useState("");
   const [level, setLevel] = useState("Beginner");
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
@@ -86,6 +88,7 @@ export default function ClassesPage() {
                 notes,
                 studentIds: selectedStudentIds,
               });
+              showActionResponse({ tone: "success", message: "Class saved." });
               setName("");
               setLevel("Beginner");
               setSelectedDays([]);
@@ -329,6 +332,7 @@ export default function ClassesPage() {
                         onClick={() => {
                           if (window.confirm(`Delete ${classItem.name}? This will also remove related assigned lesson plans.`)) {
                             deleteClass(classItem.id);
+                            showActionResponse({ tone: "success", message: `${classItem.name} deleted.` });
                             if (editingClassId === classItem.id) {
                               setEditingClassId(null);
                             }
@@ -353,6 +357,7 @@ export default function ClassesPage() {
                             notes: editNotes,
                             studentIds: editStudentIds,
                           });
+                          showActionResponse({ tone: "success", message: "Class updated." });
                           setEditingClassId(null);
                         }}
                       >

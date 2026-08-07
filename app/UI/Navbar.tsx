@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCoachApp } from "../lib/coach-store";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSun, faMoon, faBars } from "@fortawesome/free-solid-svg-icons";
+import FeedbackWidget from "./FeedbackWidget";
 
 const links = [
   { href: "/Landing", label: "Home" },
@@ -39,10 +40,30 @@ export default function Navbar() {
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
-    setTheme(nextTheme);
+
+    type ViewTransitionDoc = Document & {
+      startViewTransition?: (update: () => void) => { finished: Promise<void> };
+    };
+
+    const doc = document as ViewTransitionDoc;
+    if (typeof doc.startViewTransition === "function") {
+      doc.startViewTransition(() => {
+        setTheme(nextTheme);
+      });
+      return;
+    }
+
+    document.documentElement.classList.add("theme-transitioning");
+    window.requestAnimationFrame(() => {
+      setTheme(nextTheme);
+      window.setTimeout(() => {
+        document.documentElement.classList.remove("theme-transitioning");
+      }, 320);
+    });
   };
 
   return (
+    <>
     <div className="sticky top-4 z-20 mx-auto flex w-full max-w-7xl flex-col items-start gap-3 lg:static">
       <div className="flex w-full items-center justify-between lg:justify-end">
         <button
@@ -50,7 +71,7 @@ export default function Navbar() {
           aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={isMenuOpen}
           aria-controls="coach-main-navigation"
-          className="rounded-full border border-indigo-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 shadow-[0_10px_24px_rgba(79,70,229,0.16)] transition hover:border-indigo-300 hover:bg-indigo-50 lg:hidden"
+          className="cursor-pointer rounded-full border border-indigo-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 shadow-[0_10px_24px_rgba(79,70,229,0.16)] transition hover:border-indigo-300 hover:bg-indigo-50 lg:hidden"
           onClick={() => setIsMenuOpen((prev) => !prev)}
         >
           <FontAwesomeIcon icon={faBars} className="h-5 w-5" />
@@ -61,13 +82,13 @@ export default function Navbar() {
         suppressHydrationWarning
         aria-pressed={theme === "dark"}
         aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-        className="theme-toggle group relative flex h-11 w-15 shrink-0 items-center justify-center overflow-hidden rounded-full border border-indigo-200/90 shadow-[0_10px_24px_rgba(79,70,229,0.24)] transition hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 lg:fixed lg:top-4 lg:right-4 lg:z-30"
+        className="theme-toggle group relative flex h-11 w-15 shrink-0 items-center justify-center overflow-hidden rounded-full border border-indigo-200/90 shadow-[0_10px_24px_rgba(79,70,229,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 lg:fixed lg:top-4 lg:right-4 lg:z-30"
         onClick={toggleTheme}
       >
         <span
           aria-hidden
           suppressHydrationWarning
-          className={`absolute inset-0 transition duration-500 ${
+          className={`absolute inset-0 ${
             theme === "dark"
               ? "bg-linear-to-br from-slate-800 via-slate-900 to-indigo-950"
               : "bg-linear-to-br from-amber-200 via-yellow-100 to-sky-200"
@@ -76,21 +97,18 @@ export default function Navbar() {
         <span
           aria-hidden
           suppressHydrationWarning
-          className={`theme-toggle-thumb absolute left-1 top-1 flex h-9 w-9 items-center justify-center rounded-full text-sm shadow-[0_8px_18px_rgba(15,23,42,0.22)] transition duration-500 ${
+          className={`theme-toggle-thumb absolute left-1 top-1 flex h-9 w-9 items-center justify-center rounded-full text-sm shadow-[0_8px_18px_rgba(15,23,42,0.22)] ${
             theme === "dark"
               ? "translate-x-5 bg-slate-900 text-indigo-200"
               : "translate-x-0 bg-white text-amber-600"
           }`}
         >
-          <FontAwesomeIcon
-            icon={theme === "dark" ? faMoon : faSun}
-            className={`transition duration-500 ${theme === "dark" ? "rotate-0 scale-100" : "rotate-12 scale-95"}`}
-          />
+          <FontAwesomeIcon icon={theme === "dark" ? faMoon : faSun} />
         </span>
       </button>
       </div>
       <header
-        className={`${isMenuOpen ? "block" : "hidden"} w-full rounded-3xl border border-indigo-200/70 bg-white/88 px-4 py-4 shadow-[0_18px_46px_rgba(79,70,229,0.16)] backdrop-blur sm:px-6 lg:block`}
+        className={`${isMenuOpen ? "block" : "hidden"} w-full rounded-3xl border border-indigo-200/70 bg-white/88 px-4 py-4 shadow-[0_18px_46px_rgba(79,70,229,0.16)] backdrop-blur dark:border-indigo-300/40 dark:bg-slate-900/80 sm:px-6 lg:block`}
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center justify-between gap-3">
@@ -141,7 +159,7 @@ export default function Navbar() {
             </Link>
             <button
               type="button"
-              className="rounded-full border border-indigo-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50"
+              className="cursor-pointer rounded-full border border-indigo-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 dark:border-indigo-300/40 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-700/80"
               onClick={() => {
                 setIsMenuOpen(false);
                 signOutCoach();
@@ -156,5 +174,7 @@ export default function Navbar() {
 
      
     </div>
+    <FeedbackWidget />
+    </>
   );
 }
