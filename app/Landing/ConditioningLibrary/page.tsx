@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import ExerciseCard from "../../UI/ExerciseCard";
 import Navbar from "../../UI/Navbar";
 import { useCoachApp } from "@/app/lib/coach-store";
@@ -15,6 +15,8 @@ const splitValues = (value: string) =>
 
 const difficultyOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper Intermediate", "Advanced"];
 
+type ConditioningSortOption = "none" | "az" | "za";
+
 export default function ConditioningLibraryPage() {
   const { conditioningExercises, addConditioningExercise, lessonPlan, toggleLessonPlanItem } = useCoachApp();
   const { showActionResponse } = useActionResponse();
@@ -28,6 +30,21 @@ export default function ConditioningLibraryPage() {
   const [progressions, setProgressions] = useState("");
   const [regressions, setRegressions] = useState("");
   const [lessonUse, setLessonUse] = useState("");
+  const [sortBy, setSortBy] = useState<ConditioningSortOption>("none");
+
+  const sortedConditioningExercises = useMemo(() => {
+    const items = [...conditioningExercises];
+
+    if (sortBy === "az") {
+      return items.sort((left, right) => left.title.localeCompare(right.title));
+    }
+
+    if (sortBy === "za") {
+      return items.sort((left, right) => right.title.localeCompare(left.title));
+    }
+
+    return items;
+  }, [conditioningExercises, sortBy]);
 
   return (
     <div className="min-h-screen px-4 py-4 sm:px-6 lg:px-8">
@@ -198,8 +215,25 @@ export default function ConditioningLibraryPage() {
             </form>
           </div>
 
-          <section className={`grid gap-4 ${showCreateExercise ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
-            {conditioningExercises.map((item: LibraryItem) => (
+          <section className="space-y-4">
+            <div className="inline-flex flex-wrap items-center justify-start gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
+              <p className="text-sm font-medium text-slate-700">Sort conditioning</p>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <select
+                  value={sortBy}
+                  onChange={(event) => setSortBy(event.target.value as ConditioningSortOption)}
+                  className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-teal-600"
+                  aria-label="Sort conditioning"
+                >
+                  <option value="none">Default</option>
+                  <option value="az">A-Z</option>
+                  <option value="za">Z-A</option>
+                </select>
+              </label>
+            </div>
+
+            <div className={`grid gap-4 ${showCreateExercise ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
+            {sortedConditioningExercises.map((item: LibraryItem) => (
               <ExerciseCard
                 key={item.id}
                 item={item}
@@ -208,6 +242,7 @@ export default function ConditioningLibraryPage() {
                 onAddToLessonPlan={() => toggleLessonPlanItem("conditioning", item.id)}
               />
             ))}
+            </div>
           </section>
         </section>
       </main>

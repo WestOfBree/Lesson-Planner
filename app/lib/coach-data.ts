@@ -79,6 +79,7 @@ export interface SkillLibraryItem {
   difficulty: string;
   coachingCues: string[];
   lessonUse: string;
+  videoUrl?: string;
   isCustom: boolean;
 }
 
@@ -127,6 +128,7 @@ export interface NewSkillLibraryItemInput {
   difficulty: string;
   coachingCues: string[];
   lessonUse: string;
+  videoUrl?: string;
 }
 
 export interface NewLessonPlanInput {

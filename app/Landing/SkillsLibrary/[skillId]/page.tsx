@@ -26,6 +26,8 @@ export default function SkillDetailPage() {
     friends,
     toggleLessonPlanItem,
     updateSkillExercise,
+    uploadSkillExerciseVideo,
+    removeSkillExerciseVideo,
     deleteSkillExercise,
     shareSkillExercise,
   } = useCoachApp();
@@ -47,6 +49,9 @@ export default function SkillDetailPage() {
   const [isEditing, setIsEditing] = useState(searchParams.get("edit") === "1");
   const [shareTargetId, setShareTargetId] = useState("");
   const [isSharing, setIsSharing] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [editVideoFile, setEditVideoFile] = useState<File | null>(null);
   const [title, setTitle] = useState(formDefaults.title);
   const [description, setDescription] = useState(formDefaults.description);
   const [difficulty, setDifficulty] = useState(formDefaults.difficulty);
@@ -102,6 +107,20 @@ export default function SkillDetailPage() {
               <p className="mt-3 text-sm leading-7 text-slate-600">{skill.lessonUse}</p>
             </div>
           </div>
+
+          {skill.videoUrl ? (
+            <div className="mt-8 space-y-3">
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Skill video</p>
+              <video
+                controls
+                preload="metadata"
+                className="w-full rounded-2xl border border-slate-200 bg-black/80"
+                src={skill.videoUrl}
+              >
+                Your browser does not support video playback.
+              </video>
+            </div>
+          ) : null}
         </section>
 
         <aside className="space-y-4 rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
@@ -136,10 +155,14 @@ export default function SkillDetailPage() {
           <button
             type="button"
             className="w-full cursor-pointer rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 font-semibold text-rose-700 transition hover:bg-rose-100"
-            onClick={() => {
+            onClick={async () => {
               if (window.confirm(`Delete ${skill.title}?`)) {
-                deleteSkillExercise(skill.id);
-                router.push("/Landing/SkillsLibrary");
+                try {
+                  await deleteSkillExercise(skill.id);
+                  router.push("/Landing/SkillsLibrary");
+                } catch (error) {
+                  showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to delete skill." });
+                }
               }
             }}
           >
@@ -159,7 +182,13 @@ export default function SkillDetailPage() {
               setIsSharing(true);
 
               try {
-                await shareSkillExercise(skill.id, shareTargetId);
+                let includeVideo = true;
+
+                if (skill.videoUrl) {
+                  includeVideo = window.confirm("Share this skill video too? Click OK to include the video, or Cancel to share without it.");
+                }
+
+                await shareSkillExercise(skill.id, shareTargetId, { includeVideo });
                 const targetCoach = friends.find((friend) => friend.id === shareTargetId);
                 showActionResponse({
                   tone: "success",
@@ -207,17 +236,32 @@ export default function SkillDetailPage() {
           {isEditing ? (
             <form
               className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
-              onSubmit={(event) => {
+              onSubmit={async (event) => {
                 event.preventDefault();
-                updateSkillExercise(skill.id, {
-                  title,
-                  description,
-                  difficulty,
-                  coachingCues: splitValues(coachingCues),
-                  lessonUse,
-                });
-                showActionResponse({ tone: "success", message: "Skill updated." });
-                setIsEditing(false);
+
+                setIsSavingEdit(true);
+
+                try {
+                  updateSkillExercise(skill.id, {
+                    title,
+                    description,
+                    difficulty,
+                    coachingCues: splitValues(coachingCues),
+                    lessonUse,
+                  });
+
+                  if (editVideoFile) {
+                    await uploadSkillExerciseVideo(skill.id, editVideoFile);
+                    setEditVideoFile(null);
+                  }
+
+                  showActionResponse({ tone: "success", message: "Skill updated." });
+                  setIsEditing(false);
+                } catch (error) {
+                  showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to update skill." });
+                } finally {
+                  setIsSavingEdit(false);
+                }
               }}
             >
               <input
@@ -258,11 +302,42 @@ export default function SkillDetailPage() {
                 className="min-h-16 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-teal-600"
                 placeholder="Lesson use"
               />
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-slate-700">Replace skill video (optional)</span>
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={(event) => setEditVideoFile(event.target.files?.[0] ?? null)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-slate-200 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-300"
+                />
+              </label>
+              {skill.videoUrl ? (
+                <button
+                  type="button"
+                  disabled={isUploadingVideo}
+                  className="w-full cursor-pointer rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-70"
+                  onClick={async () => {
+                    setIsUploadingVideo(true);
+
+                    try {
+                      await removeSkillExerciseVideo(skill.id);
+                      showActionResponse({ tone: "success", message: "Skill video removed." });
+                    } catch (error) {
+                      showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to remove skill video." });
+                    } finally {
+                      setIsUploadingVideo(false);
+                    }
+                  }}
+                >
+                  Remove current video
+                </button>
+              ) : null}
               <button
                 type="submit"
-                className="w-full rounded-xl bg-teal-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-teal-800"
+                disabled={isSavingEdit}
+                className="w-full rounded-xl bg-teal-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                Save changes
+                {isSavingEdit ? "Saving..." : "Save changes"}
               </button>
             </form>
           ) : null}

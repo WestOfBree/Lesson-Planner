@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 
 type ActionResponseTone = "success" | "error" | "info";
 
@@ -45,8 +46,21 @@ const ActionResponsePopup = ({
 }) => {
   const headline = payload.title ?? (payload.tone === "success" ? "Success" : payload.tone === "error" ? "Something went wrong" : "Update");
 
-  return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-60 flex justify-center px-4 sm:bottom-6">
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      className="pointer-events-none flex justify-center px-4 pb-4 sm:pb-6"
+      style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 2147483647,
+      }}
+    >
       <div
         role="status"
         aria-live="polite"
@@ -67,7 +81,8 @@ const ActionResponsePopup = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 

@@ -53,6 +53,35 @@ export default function LessonPlanDetailPage() {
     return Number.isFinite(numericValue) && numericValue > 0 ? Math.round(numericValue) : undefined;
   };
 
+  const hasAnyPrescriptionValue = (prescription: ConditioningPrescription) =>
+    prescription.reps !== undefined ||
+    prescription.holdSeconds !== undefined ||
+    prescription.sets !== undefined;
+
+  const getMissingPrescriptionLabels = (prescription: ConditioningPrescription) => {
+    const missingLabels: string[] = [];
+
+    if (prescription.reps === undefined) {
+      missingLabels.push("reps");
+    }
+
+    if (prescription.holdSeconds === undefined) {
+      missingLabels.push("hold seconds");
+    }
+
+    if (prescription.sets === undefined) {
+      missingLabels.push("sets");
+    }
+
+    return missingLabels;
+  };
+
+  const getConditioningIdsWithValues = () =>
+    selectedConditioningIds.filter((itemId) => {
+      const prescription = conditioningRepsById[itemId] ?? {};
+      return hasAnyPrescriptionValue(prescription);
+    });
+
   const formatConditioningPrescription = (prescription: ConditioningPrescription | undefined) => {
     const parts = [
       prescription?.reps ? `${prescription.reps} reps` : null,
@@ -92,6 +121,67 @@ export default function LessonPlanDetailPage() {
   const displaySkillItems = useMemo(
     () => skillExercises.filter((item) => (lessonPlan?.skillIds ?? []).includes(item.id)),
     [skillExercises, lessonPlan?.skillIds],
+  );
+
+  const lessonScopeStudentIds = useMemo(
+    () => (lessonPlan.studentIds.length ? lessonPlan.studentIds : selectedClass?.studentIds ?? []),
+    [lessonPlan.studentIds, selectedClass?.studentIds],
+  );
+
+  const lessonStudents = useMemo(
+    () => students.filter((student) => lessonScopeStudentIds.includes(student.id)),
+    [students, lessonScopeStudentIds],
+  );
+
+  const sharedConditioningAssignments = useMemo(
+    () =>
+      (lessonPlan.conditioningIds ?? [])
+        .map((itemId) => {
+          const item = conditioningExercises.find((entry) => entry.id === itemId);
+
+          if (!item) {
+            return null;
+          }
+
+          return {
+            id: item.id,
+            label: `${item.title} (${formatConditioningPrescription(lessonPlan.conditioningReps?.[item.id])})`,
+          };
+        })
+        .filter((entry): entry is { id: string; label: string } => Boolean(entry)),
+    [lessonPlan.conditioningIds, lessonPlan.conditioningReps, conditioningExercises],
+  );
+
+  const sharedSkillAssignments = useMemo(
+    () =>
+      (lessonPlan.skillIds ?? [])
+        .map((itemId) => {
+          const item = skillExercises.find((entry) => entry.id === itemId);
+
+          if (!item) {
+            return null;
+          }
+
+          return { id: item.id, title: item.title };
+        })
+        .filter((entry): entry is { id: string; title: string } => Boolean(entry)),
+    [lessonPlan.skillIds, skillExercises],
+  );
+
+  const studentAssignmentRows = useMemo(
+    () =>
+      lessonStudents.map((student) => {
+        const personalSkillIds = lessonPlan.perStudentSkillIds?.[student.id] ?? [];
+        const personalSkillTitles = personalSkillIds
+          .map((itemId) => skillExercises.find((entry) => entry.id === itemId)?.title)
+          .filter((title): title is string => Boolean(title));
+
+        return {
+          student,
+          personalSkillTitles,
+        };
+      }),
+    [lessonStudents, lessonPlan.perStudentSkillIds, skillExercises],
   );
 
   if (!lessonPlan) {
@@ -156,6 +246,8 @@ export default function LessonPlanDetailPage() {
                   event.preventDefault();
 
                   try {
+                    const conditioningIdsWithValues = getConditioningIdsWithValues();
+
                     updateAssignedLessonPlan(lessonPlan.id, {
                       title,
                       classId,
@@ -164,7 +256,7 @@ export default function LessonPlanDetailPage() {
                       outcomeNotes,
                       perStudentOutcomeNotes,
                       studentIds: selectedStudentIds,
-                      conditioningIds: selectedConditioningIds,
+                      conditioningIds: conditioningIdsWithValues,
                       conditioningReps: conditioningRepsById,
                       skillIds: selectedClassSkillIds,
                       perStudentSkillIds,
@@ -343,6 +435,8 @@ export default function LessonPlanDetailPage() {
                     {conditioningExercises.map((item) => {
                       const isSelected = selectedConditioningIds.includes(item.id);
                       const currentPrescription = conditioningRepsById[item.id] ?? {};
+                      const hasAnyValue = hasAnyPrescriptionValue(currentPrescription);
+                      const missingLabels = getMissingPrescriptionLabels(currentPrescription);
 
                       return (
                         <label
@@ -367,7 +461,7 @@ export default function LessonPlanDetailPage() {
                                   if (event.target.checked) {
                                     return {
                                       ...current,
-                                      [item.id]: current[item.id] ?? { reps: 8 },
+                                      [item.id]: current[item.id] ?? {},
                                     };
                                   }
 
@@ -381,6 +475,7 @@ export default function LessonPlanDetailPage() {
                           </div>
 
                           {isSelected ? (
+                            <>
                             <div className="mt-3 grid gap-2 sm:grid-cols-3">
                               <label className="space-y-1">
                                 <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Reps</span>
@@ -400,7 +495,7 @@ export default function LessonPlanDetailPage() {
                                       },
                                     }));
                                   }}
-                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-teal-600"
+                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-teal-600 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                                   aria-label={`${item.title} reps`}
                                 />
                               </label>
@@ -423,7 +518,7 @@ export default function LessonPlanDetailPage() {
                                       },
                                     }));
                                   }}
-                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-teal-600"
+                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-teal-600 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                                   aria-label={`${item.title} hold seconds`}
                                 />
                               </label>
@@ -446,11 +541,19 @@ export default function LessonPlanDetailPage() {
                                       },
                                     }));
                                   }}
-                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-teal-600"
+                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-teal-600 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                                   aria-label={`${item.title} sets`}
                                 />
                               </label>
                             </div>
+                            {!hasAnyValue ? (
+                              <p className="mt-2 text-xs text-amber-700">Add at least one value to include this exercise in the lesson plan.</p>
+                            ) : missingLabels.length ? (
+                              <p className="mt-2 text-xs text-slate-500">Missing value: {missingLabels.join(", ")}.</p>
+                            ) : (
+                              <p className="mt-2 text-xs text-emerald-700">All prescription fields are set.</p>
+                            )}
+                            </>
                           ) : (
                             <p className="mt-2 text-xs text-slate-400">Select to add prescription details.</p>
                           )}
@@ -649,6 +752,51 @@ export default function LessonPlanDetailPage() {
               ) : (
                 <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
                   No class skill blocks assigned.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-slate-700">Student assignments</p>
+              {studentAssignmentRows.length ? (
+                <div className="space-y-2">
+                  {studentAssignmentRows.map(({ student, personalSkillTitles }) => (
+                    <div key={`student-assignment-${student.id}`} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-sm font-semibold text-slate-900">{student.name}</p>
+                      <div className="mt-2 space-y-2 text-xs text-slate-600">
+                        <div>
+                          <p className="font-medium text-slate-700">Conditioning</p>
+                          {sharedConditioningAssignments.length ? (
+                            <p className="mt-1">{sharedConditioningAssignments.map((entry) => entry.label).join(" • ")}</p>
+                          ) : (
+                            <p className="mt-1">None assigned</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <p className="font-medium text-slate-700">Class skills</p>
+                          {sharedSkillAssignments.length ? (
+                            <p className="mt-1">{sharedSkillAssignments.map((entry) => entry.title).join(" • ")}</p>
+                          ) : (
+                            <p className="mt-1">None assigned</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <p className="font-medium text-slate-700">Individual skills</p>
+                          {personalSkillTitles.length ? (
+                            <p className="mt-1">{personalSkillTitles.join(" • ")}</p>
+                          ) : (
+                            <p className="mt-1">None assigned</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                  No students are currently assigned to this lesson.
                 </p>
               )}
             </div>

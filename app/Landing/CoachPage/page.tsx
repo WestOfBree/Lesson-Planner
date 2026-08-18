@@ -17,6 +17,7 @@ export default function CoachPage() {
 		sendFriendRequest,
 		approveFriendRequest,
 		declineFriendRequest,
+		removeFriend,
 		acceptSharedItem,
 		declineSharedItem,
 	} = useCoachApp();
@@ -122,6 +123,25 @@ export default function CoachPage() {
 			showActionResponse({ tone: "success", message: "Friend request declined." });
 		} catch (error) {
 			showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to decline friend request." });
+		}
+	};
+
+	const handleRemoveFriend = async (friendId: string) => {
+		const friend = friends.find((entry) => entry.id === friendId);
+
+		if (!friend) {
+			return;
+		}
+
+		if (!window.confirm(`Remove ${friend.displayName} from your friends list?`)) {
+			return;
+		}
+
+		try {
+			await removeFriend(friendId);
+			showActionResponse({ tone: "success", message: `${friend.displayName} was removed from your friends list.` });
+		} catch (error) {
+			showActionResponse({ tone: "error", message: error instanceof Error ? error.message : "Unable to remove friend." });
 		}
 	};
 
@@ -383,8 +403,19 @@ export default function CoachPage() {
 								<ul className="space-y-2">
 									{friends.map((friend) => (
 										<li key={friend.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-											<p className="font-medium text-slate-950">{friend.displayName}</p>
-											<p className="text-sm text-slate-600">{friend.email}</p>
+											<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+												<div>
+													<p className="font-medium text-slate-950">{friend.displayName}</p>
+													<p className="text-sm text-slate-600">{friend.email}</p>
+												</div>
+												<button
+													type="button"
+													onClick={() => void handleRemoveFriend(friend.id)}
+													className="cursor-pointer rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+												>
+													Remove
+												</button>
+											</div>
 										</li>
 									))}
 								</ul>
