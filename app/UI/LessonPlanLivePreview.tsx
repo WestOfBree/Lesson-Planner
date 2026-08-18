@@ -52,7 +52,17 @@ const LessonPlanLivePreview = ({
     .map((studentId) => students.find((student) => student.id === studentId))
     .filter((student): student is StudentProfileData => Boolean(student));
 
+  const hasAnyConditioningValue = (itemId: string) => {
+    const prescription = conditioningRepsById[itemId] ?? {};
+    return (
+      prescription.reps !== undefined ||
+      prescription.holdSeconds !== undefined ||
+      prescription.sets !== undefined
+    );
+  };
+
   const conditioningItems = selectedConditioningIds
+    .filter((itemId) => hasAnyConditioningValue(itemId))
     .map((itemId) => conditioningExercises.find((item) => item.id === itemId))
     .filter((item): item is LibraryItem => Boolean(item));
 

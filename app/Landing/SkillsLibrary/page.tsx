@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Navbar from "../../UI/Navbar";
 import SkillCard from "../../UI/SkillCard";
 import { useCoachApp } from "@/app/lib/coach-store";
@@ -15,8 +15,18 @@ const splitValues = (value: string) =>
 
 const difficultyOptions = ["Beginner", "Begintermediate", "Intermediate", "Upper Intermediate", "Advanced"];
 
+type SkillSortOption = "none" | "difficulty" | "az" | "za";
+
+const difficultyRank: Record<string, number> = {
+  beginner: 0,
+  begintermediate: 1,
+  intermediate: 2,
+  "upper intermediate": 3,
+  advanced: 4,
+};
+
 export default function SkillsLibraryPage() {
-  const { skillExercises, addSkillExercise, lessonPlan, toggleLessonPlanItem } = useCoachApp();
+  const { skillExercises, addSkillExercise, uploadSkillExerciseVideo, lessonPlan, toggleLessonPlanItem } = useCoachApp();
   const { showActionResponse } = useActionResponse();
   const [showCreateSkill, setShowCreateSkill] = useState(false);
   const [title, setTitle] = useState("");
@@ -24,6 +34,36 @@ export default function SkillsLibraryPage() {
   const [difficulty, setDifficulty] = useState("Beginner");
   const [coachingCues, setCoachingCues] = useState("");
   const [lessonUse, setLessonUse] = useState("");
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sortBy, setSortBy] = useState<SkillSortOption>("none");
+
+  const sortedSkillExercises = useMemo(() => {
+    const items = [...skillExercises];
+
+    if (sortBy === "difficulty") {
+      return items.sort((left, right) => {
+        const leftRank = difficultyRank[left.difficulty.trim().toLowerCase()] ?? Number.MAX_SAFE_INTEGER;
+        const rightRank = difficultyRank[right.difficulty.trim().toLowerCase()] ?? Number.MAX_SAFE_INTEGER;
+
+        if (leftRank !== rightRank) {
+          return leftRank - rightRank;
+        }
+
+        return left.title.localeCompare(right.title);
+      });
+    }
+
+    if (sortBy === "az") {
+      return items.sort((left, right) => left.title.localeCompare(right.title));
+    }
+
+    if (sortBy === "za") {
+      return items.sort((left, right) => right.title.localeCompare(left.title));
+    }
+
+    return items;
+  }, [skillExercises, sortBy]);
 
   return (
     <div className="min-h-screen px-4 py-4 sm:px-6 lg:px-8">
@@ -52,21 +92,39 @@ export default function SkillsLibraryPage() {
           >
             <form
               className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.08)] sm:p-8"
-              onSubmit={(event) => {
+              onSubmit={async (event) => {
                 event.preventDefault();
-                addSkillExercise({
-                  title,
-                  description,
-                  difficulty,
-                  coachingCues: splitValues(coachingCues),
-                  lessonUse,
-                });
-                showActionResponse({ tone: "success", message: "Skill exercise created." });
-                setTitle("");
-                setDescription("");
-                setDifficulty("Beginner");
-                setCoachingCues("");
-                setLessonUse("");
+
+                setIsSubmitting(true);
+
+                try {
+                  const createdSkill = addSkillExercise({
+                    title,
+                    description,
+                    difficulty,
+                    coachingCues: splitValues(coachingCues),
+                    lessonUse,
+                  });
+
+                  if (videoFile) {
+                    await uploadSkillExerciseVideo(createdSkill.id, videoFile);
+                  }
+
+                  showActionResponse({ tone: "success", message: "Skill exercise created." });
+                  setTitle("");
+                  setDescription("");
+                  setDifficulty("Beginner");
+                  setCoachingCues("");
+                  setLessonUse("");
+                  setVideoFile(null);
+                } catch (error) {
+                  showActionResponse({
+                    tone: "error",
+                    message: error instanceof Error ? error.message : "Unable to create skill exercise.",
+                  });
+                } finally {
+                  setIsSubmitting(false);
+                }
               }}
             >
               <div className="space-y-4">
@@ -134,18 +192,47 @@ export default function SkillsLibraryPage() {
                 />
               </label>
 
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-slate-700">Skill video (optional)</span>
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={(event) => setVideoFile(event.target.files?.[0] ?? null)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-slate-200 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-300"
+                />
+              </label>
+
                 <button
                   type="submit"
-                  className="cursor-pointer w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800"
+                  disabled={isSubmitting}
+                  className="cursor-pointer w-full rounded-2xl bg-teal-700 px-4 py-3 font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  Add skill exercise
+                  {isSubmitting ? "Saving..." : "Add skill exercise"}
                 </button>
               </div>
             </form>
           </div>
 
-          <section className={`grid gap-4 ${showCreateSkill ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
-            {skillExercises.map((item: SkillLibraryItem) => (
+          <section className="space-y-4">
+            <div className="inline-flex flex-wrap items-center justify-start gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
+              <p className="text-sm font-medium text-slate-700">Sort skills</p>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <select
+                  value={sortBy}
+                  onChange={(event) => setSortBy(event.target.value as SkillSortOption)}
+                  className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-teal-600"
+                  aria-label="Sort skills"
+                >
+                  <option value="none">Default</option>
+                  <option value="difficulty">Skill level</option>
+                  <option value="az">A-Z</option>
+                  <option value="za">Z-A</option>
+                </select>
+              </label>
+            </div>
+
+            <div className={`grid gap-4 ${showCreateSkill ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
+            {sortedSkillExercises.map((item: SkillLibraryItem) => (
               <SkillCard
                 key={item.id}
                 item={item}
@@ -154,6 +241,7 @@ export default function SkillsLibraryPage() {
                 onAddToLessonPlan={() => toggleLessonPlanItem("skill", item.id)}
               />
             ))}
+            </div>
           </section>
         </section>
       </main>

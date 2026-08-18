@@ -71,7 +71,7 @@ export default function Navbar() {
           aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={isMenuOpen}
           aria-controls="coach-main-navigation"
-          className="cursor-pointer rounded-full border border-indigo-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 shadow-[0_10px_24px_rgba(79,70,229,0.16)] transition hover:border-indigo-300 hover:bg-indigo-50 lg:hidden"
+          className="cursor-pointer rounded-full border border-indigo-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 shadow-[0_10px_24px_rgba(79,70,229,0.16)] transition hover:border-indigo-300 hover:bg-indigo-50 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:border-indigo-300/50 dark:hover:bg-slate-700 lg:hidden"
           onClick={() => setIsMenuOpen((prev) => !prev)}
         >
           <FontAwesomeIcon icon={faBars} className="h-5 w-5" />
@@ -108,13 +108,13 @@ export default function Navbar() {
       </button>
       </div>
       <header
-        className={`${isMenuOpen ? "block" : "hidden"} w-full rounded-3xl border border-indigo-200/70 bg-white/88 px-4 py-4 shadow-[0_18px_46px_rgba(79,70,229,0.16)] backdrop-blur dark:border-indigo-300/40 dark:bg-slate-900/80 sm:px-6 lg:block`}
+        className={`${isMenuOpen ? "block" : "hidden"} w-full rounded-3xl border border-indigo-200/70 bg-white/88 px-4 py-4 shadow-[0_18px_46px_rgba(79,70,229,0.16)] backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 dark:shadow-[0_20px_48px_rgba(2,6,23,0.55)] sm:px-6 lg:block`}
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.4em] text-indigo-700">Aerial Coach</p>
-              <h1 className="mt-1 text-xl font-semibold text-slate-950">
+              <p className="text-xs uppercase tracking-[0.4em] text-indigo-700 dark:text-indigo-300">Aerial Coach</p>
+              <h1 className="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">
                 {currentCoach ? `${currentCoach.displayName}'s workspace` : "Coach workspace"}
               </h1>
             </div>
@@ -137,8 +137,8 @@ export default function Navbar() {
                   onClick={() => setIsMenuOpen(false)}
                   className={`flex min-h-11 items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition ${
                     isActive
-                      ? "bg-slate-900 text-white shadow-[0_10px_24px_rgba(15,23,42,0.32)]"
-                      : "bg-indigo-50 text-slate-700 hover:bg-indigo-100"
+                      ? "bg-slate-900 text-white shadow-[0_10px_24px_rgba(15,23,42,0.32)] dark:bg-indigo-400 dark:text-slate-950 dark:shadow-[0_10px_24px_rgba(99,102,241,0.35)]"
+                      : "bg-indigo-50 text-slate-700 hover:bg-indigo-100 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                   }`}
                 >
                   {link.label}
@@ -152,10 +152,10 @@ export default function Navbar() {
               href="/Landing/CoachPage"
               aria-label="Open coach profile"
               onClick={() => setIsMenuOpen(false)}
-              className="flex flex-col rounded-2xl border border-indigo-200/70 bg-indigo-50/70 px-3 py-2 text-left transition hover:border-indigo-300 hover:bg-white sm:block sm:text-right"
+              className="flex flex-col rounded-2xl border border-indigo-200/70 bg-indigo-50/70 px-3 py-2 text-left transition hover:border-indigo-300 hover:bg-white dark:border-slate-600 dark:bg-slate-800 dark:hover:border-indigo-300/50 dark:hover:bg-slate-700 sm:block sm:text-right"
             >
-              <p className="text-sm font-medium text-slate-950">{currentCoach?.displayName ?? "Signed out"}</p>
-              <p className="text-xs text-slate-500">{currentCoach?.email ?? "Log back in to continue"}</p>
+              <p className="text-sm font-medium text-slate-950 dark:text-slate-100">{currentCoach?.displayName ?? "Signed out"}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-300">{currentCoach?.email ?? "Log back in to continue"}</p>
             </Link>
             <button
               type="button"

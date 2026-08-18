@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faVideo } from "@fortawesome/free-solid-svg-icons";
 import type { SkillLibraryItem } from "../lib/coach-data";
 
 interface SkillCardProps {
@@ -17,7 +19,18 @@ export default function SkillCard({ item, href, onAddToLessonPlan, selected }: S
             <p className="text-xs uppercase tracking-[0.35em] text-pink-700 dark:text-pink-300">{item.category}</p>
             <h3 className="mt-2 text-xl font-semibold text-slate-950 group-hover:text-pink-700 dark:text-slate-100 dark:group-hover:text-pink-300">{item.title}</h3>
           </div>
-          <span className="rounded-full bg-pink-100 px-3 py-1 text-xs font-medium text-pink-800 dark:bg-pink-400/20 dark:text-pink-200">{item.difficulty}</span>
+          <div className="flex items-center gap-2">
+            {item.videoUrl ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-teal-100 px-2 py-1 text-[11px] font-semibold text-teal-800 dark:bg-teal-500/20 dark:text-teal-200"
+                aria-label="Video available"
+                title="Video available"
+              >
+                <FontAwesomeIcon icon={faVideo} className="h-3 w-3" />
+              </span>
+            ) : null}
+            <span className="rounded-full bg-pink-100 px-3 py-1 text-xs font-medium text-pink-800 dark:bg-pink-400/20 dark:text-pink-200">{item.difficulty}</span>
+          </div>
         </div>
 
         <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.description}</p>

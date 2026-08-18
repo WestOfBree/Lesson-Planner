@@ -34,6 +34,7 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
+import { deleteObject, getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
 import {
   type AssignedLessonPlan,
   coachNameFromEmail,
@@ -54,7 +55,7 @@ import {
   type StudentProfileData,
   type UpdateLessonPlanInput,
 } from "./coach-data";
-import { auth, db } from "../../Firestore/init";
+import { app, auth, db, storage } from "../../Firestore/init";
 
 type SignInInput = {
   email: string;
@@ -63,6 +64,10 @@ type SignInInput = {
 };
 
 type ShareKind = "conditioning" | "skill" | "student";
+
+type SkillShareOptions = {
+  includeVideo?: boolean;
+};
 
 type PendingShareRequest = {
   id: string;
@@ -120,6 +125,7 @@ type CoachStore = CoachState & {
   sendFriendRequest: (friendId: string) => Promise<void>;
   approveFriendRequest: (requesterId: string) => Promise<void>;
   declineFriendRequest: (requesterId: string) => Promise<void>;
+  removeFriend: (friendId: string) => Promise<void>;
   acceptSharedItem: (shareId: string) => Promise<void>;
   declineSharedItem: (shareId: string) => Promise<void>;
   addStudent: (input: NewStudentInput) => StudentProfileData;
@@ -151,8 +157,10 @@ type CoachStore = CoachState & {
   shareConditioningExercise: (exerciseId: string, friendId: string) => Promise<void>;
   addSkillExercise: (input: NewSkillLibraryItemInput) => SkillLibraryItem;
   updateSkillExercise: (exerciseId: string, input: NewSkillLibraryItemInput) => void;
-  deleteSkillExercise: (exerciseId: string) => void;
-  shareSkillExercise: (exerciseId: string, friendId: string) => Promise<void>;
+  uploadSkillExerciseVideo: (exerciseId: string, file: File) => Promise<string>;
+  removeSkillExerciseVideo: (exerciseId: string) => Promise<void>;
+  deleteSkillExercise: (exerciseId: string) => Promise<void>;
+  shareSkillExercise: (exerciseId: string, friendId: string, options?: SkillShareOptions) => Promise<void>;
   transferStudentToCoach: (studentId: string, friendId: string) => Promise<void>;
   assignLessonPlanToClass: (input: NewLessonPlanInput) => AssignedLessonPlan;
   updateAssignedLessonPlan: (lessonPlanId: string, input: UpdateLessonPlanInput) => AssignedLessonPlan;
@@ -374,15 +382,39 @@ const notify = () => {
   listeners.forEach((listener) => listener());
 };
 
+const sanitizeSkillItem = (item: SkillLibraryItem): SkillLibraryItem => {
+  const videoUrl = item.videoUrl?.trim();
+
+  if (!videoUrl) {
+    const nextItem = { ...item };
+    delete nextItem.videoUrl;
+    return nextItem;
+  }
+
+  return {
+    ...item,
+    videoUrl,
+  };
+};
+
 const serializeState = (state: CoachState): PersistedCoachState => ({
   friends: state.friends,
   incomingFriendRequests: state.incomingFriendRequests,
-  incomingShares: state.incomingShares,
+  incomingShares: state.incomingShares.map((share) => {
+    if (share.kind !== "skill") {
+      return share;
+    }
+
+    return {
+      ...share,
+      item: sanitizeSkillItem(share.item as SkillLibraryItem),
+    };
+  }),
   students: state.students,
   classes: state.classes,
   conditioningExercises: state.conditioningExercises,
   deletedConditioningExerciseIds: state.deletedConditioningExerciseIds,
-  skillExercises: state.skillExercises,
+  skillExercises: state.skillExercises.map((item) => sanitizeSkillItem(item)),
   deletedSkillExerciseIds: state.deletedSkillExerciseIds,
   assignedLessonPlans: state.assignedLessonPlans,
   lessonPlan: state.lessonPlan,
@@ -694,17 +726,22 @@ const normalizeConditioningItem = (input: NewLibraryItemInput, category: string)
   isCustom: true,
 });
 
-const normalizeSkillItem = (input: NewSkillLibraryItemInput): SkillLibraryItem => ({
-  id: createId("item"),
-  slug: slugify(input.title),
-  title: input.title,
-  category: "Aerial Skill",
-  description: input.description,
-  difficulty: input.difficulty,
-  coachingCues: unique(input.coachingCues),
-  lessonUse: input.lessonUse,
-  isCustom: true,
-});
+const normalizeSkillItem = (input: NewSkillLibraryItemInput): SkillLibraryItem => {
+  const videoUrl = input.videoUrl?.trim();
+
+  return {
+    id: createId("item"),
+    slug: slugify(input.title),
+    title: input.title,
+    category: "Aerial Skill",
+    description: input.description,
+    difficulty: input.difficulty,
+    coachingCues: unique(input.coachingCues),
+    lessonUse: input.lessonUse,
+    ...(videoUrl ? { videoUrl } : {}),
+    isCustom: true,
+  };
+};
 
 const readPersistedState = (value: unknown): Partial<PersistedCoachState> => {
   if (!value || typeof value !== "object") {
@@ -745,6 +782,46 @@ const uniqueSlug = (existingItems: { slug: string }[], baseTitle: string) => {
   }
 
   return `${baseSlug}-${nextIndex}`;
+};
+
+const storageBucketVariants = (bucket: string, projectId?: string) => {
+  const normalizedBucket = bucket.replace(/^gs:\/\//, "").trim();
+  const variants = new Set<string>();
+
+  if (normalizedBucket) {
+    variants.add(normalizedBucket);
+
+    if (normalizedBucket.endsWith(".firebasestorage.app")) {
+      variants.add(normalizedBucket.replace(/\.firebasestorage\.app$/, ".appspot.com"));
+    } else if (normalizedBucket.endsWith(".appspot.com")) {
+      variants.add(normalizedBucket.replace(/\.appspot\.com$/, ".firebasestorage.app"));
+    }
+  }
+
+  if (projectId) {
+    variants.add(`${projectId}.appspot.com`);
+    variants.add(`${projectId}.firebasestorage.app`);
+  }
+
+  return Array.from(variants).filter(Boolean);
+};
+
+const deleteSkillVideoFromStorage = async (videoUrl?: string) => {
+  if (!videoUrl) {
+    return;
+  }
+
+  try {
+    await deleteObject(ref(storage, videoUrl));
+  } catch (error) {
+    const errorCode = typeof error === "object" && error && "code" in error ? String(error.code) : "";
+
+    if (errorCode === "storage/object-not-found") {
+      return;
+    }
+
+    console.warn("Unable to delete skill video from storage.", error);
+  }
 };
 
 const removeStudentFromState = (state: CoachState, studentId: string): CoachState => ({
@@ -1071,6 +1148,25 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
 
     const batch = writeBatch(db);
     batch.delete(incomingFriendRequestRef(user.uid, trimmedRequesterId));
+    await batch.commit();
+  };
+
+  const removeFriend = async (friendId: string) => {
+    const user = auth.currentUser;
+
+    if (!user) {
+      throw new Error("No active coach session.");
+    }
+
+    const trimmedFriendId = friendId.trim();
+
+    if (!trimmedFriendId || trimmedFriendId === user.uid) {
+      throw new Error("Invalid friend account.");
+    }
+
+    const batch = writeBatch(db);
+    batch.delete(friendRef(user.uid, trimmedFriendId));
+    batch.delete(friendRef(trimmedFriendId, user.uid));
     await batch.commit();
   };
 
@@ -1576,21 +1672,115 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
       ...current,
       skillExercises: current.skillExercises.map((item) =>
         item.id === exerciseId
-          ? {
-              ...item,
-              slug: slugify(input.title),
-              title: input.title.trim(),
-              description: input.description.trim(),
-              difficulty: input.difficulty.trim(),
-              coachingCues: unique(input.coachingCues),
-              lessonUse: input.lessonUse.trim(),
-            }
+          ? (() => {
+              const resolvedVideoUrl = input.videoUrl?.trim() || item.videoUrl?.trim();
+
+              return {
+                ...item,
+                slug: slugify(input.title),
+                title: input.title.trim(),
+                description: input.description.trim(),
+                difficulty: input.difficulty.trim(),
+                coachingCues: unique(input.coachingCues),
+                lessonUse: input.lessonUse.trim(),
+                ...(resolvedVideoUrl ? { videoUrl: resolvedVideoUrl } : {}),
+              };
+            })()
           : item,
       ),
     }));
   };
 
-  const deleteSkillExercise = (exerciseId: string) => {
+  const uploadSkillExerciseVideo = async (exerciseId: string, file: File) => {
+    const user = auth.currentUser;
+
+    if (!user) {
+      throw new Error("No active coach session.");
+    }
+
+    const skill = cachedState.skillExercises.find((item) => item.id === exerciseId);
+
+    if (!skill) {
+      throw new Error("Skill could not be found.");
+    }
+
+    const previousVideoUrl = skill.videoUrl;
+
+    const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+    const objectPath = `coaches/${user.uid}/skills/${exerciseId}/${Date.now()}-${safeFileName}`;
+    const candidateBuckets = storageBucketVariants(
+      String(storage.app.options.storageBucket ?? ""),
+      String(storage.app.options.projectId ?? ""),
+    );
+    let videoUrl = "";
+    let uploadError: unknown;
+
+    for (const bucket of candidateBuckets) {
+      try {
+        const targetStorage = getStorage(app, `gs://${bucket}`);
+        const storageRef = ref(targetStorage, objectPath);
+        await uploadBytes(storageRef, file, { contentType: file.type || undefined });
+        videoUrl = await getDownloadURL(storageRef);
+        uploadError = undefined;
+        break;
+      } catch (error) {
+        uploadError = error;
+      }
+    }
+
+    if (!videoUrl) {
+      const errorMessage = uploadError instanceof Error ? uploadError.message : "Unknown storage error";
+      throw new Error(
+        `Unable to upload video. Confirm NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET and enable Firebase Storage for this project. Details: ${errorMessage}`,
+      );
+    }
+
+    persistState((current) => ({
+      ...current,
+      skillExercises: current.skillExercises.map((item) =>
+        item.id === exerciseId
+          ? {
+              ...item,
+              videoUrl,
+            }
+          : item,
+      ),
+    }));
+
+    if (previousVideoUrl && previousVideoUrl !== videoUrl) {
+      await deleteSkillVideoFromStorage(previousVideoUrl);
+    }
+
+    return videoUrl;
+  };
+
+  const removeSkillExerciseVideo = async (exerciseId: string) => {
+    const skill = cachedState.skillExercises.find((item) => item.id === exerciseId);
+
+    if (!skill) {
+      throw new Error("Skill could not be found.");
+    }
+
+    await deleteSkillVideoFromStorage(skill.videoUrl);
+
+    persistState((current) => ({
+      ...current,
+      skillExercises: current.skillExercises.map((item) =>
+        item.id === exerciseId
+          ? (() => {
+              const nextItem = { ...item };
+              delete nextItem.videoUrl;
+              return nextItem;
+            })()
+          : item,
+      ),
+    }));
+  };
+
+  const deleteSkillExercise = async (exerciseId: string) => {
+    const skill = cachedState.skillExercises.find((item) => item.id === exerciseId);
+    await deleteSkillVideoFromStorage(skill?.videoUrl);
+
     persistState((current) => ({
       ...current,
       deletedSkillExerciseIds: unique([...current.deletedSkillExerciseIds, exerciseId]),
@@ -1619,7 +1809,7 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
-  const shareSkillExercise = async (exerciseId: string, friendId: string) => {
+  const shareSkillExercise = async (exerciseId: string, friendId: string, options?: SkillShareOptions) => {
     const user = auth.currentUser;
 
     if (!user) {
@@ -1633,6 +1823,15 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
       throw new Error("Skill could not be found.");
     }
 
+    const skillToShare: SkillLibraryItem =
+      options?.includeVideo === false
+        ? (() => {
+            const skillWithoutVideo = { ...skill };
+            delete skillWithoutVideo.videoUrl;
+            return skillWithoutVideo;
+          })()
+        : sanitizeSkillItem(skill);
+
     const senderName = cachedState.currentCoach?.displayName || user.displayName || coachNameFromEmail(user.email ?? "");
     const shareId = createId("share");
 
@@ -1645,7 +1844,7 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
         senderDisplayName: senderName,
         recipientId: friend.id,
         kind: "skill",
-        item: skill,
+        item: skillToShare,
         status: "pending",
         createdAt: serverTimestamp(),
       },
@@ -1926,6 +2125,7 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     sendFriendRequest,
     approveFriendRequest,
     declineFriendRequest,
+    removeFriend,
     acceptSharedItem,
     declineSharedItem,
     addStudent,
@@ -1943,6 +2143,8 @@ export const CoachProvider = ({ children }: { children: ReactNode }) => {
     shareConditioningExercise,
     addSkillExercise,
     updateSkillExercise,
+    uploadSkillExerciseVideo,
+    removeSkillExerciseVideo,
     deleteSkillExercise,
     shareSkillExercise,
     transferStudentToCoach,

@@ -6,6 +6,7 @@ import type {
   SkillLibraryItem,
   StudentProfileData,
 } from "@/app/lib/coach-data";
+import CollapsiblePanel from "./CollapsiblePanel";
 
 type LessonPlanCreateFormProps = {
   classes: CoachClassData[];
@@ -63,13 +64,36 @@ const LessonPlanCreateForm = ({
   onSubmit,
 }: LessonPlanCreateFormProps) => {
   const [isStudentsOpen, setIsStudentsOpen] = useState(true);
-  const [isConditioningOpen, setIsConditioningOpen] = useState(true);
-  const [isClassSkillsOpen, setIsClassSkillsOpen] = useState(true);
+  const [isConditioningOpen, setIsConditioningOpen] = useState(false);
+  const [isClassSkillsOpen, setIsClassSkillsOpen] = useState(false);
   const [isPerStudentSkillsOpen, setIsPerStudentSkillsOpen] = useState(false);
 
   const parsePositiveNumber = (value: string) => {
     const numericValue = Number(value);
     return Number.isFinite(numericValue) && numericValue > 0 ? Math.round(numericValue) : undefined;
+  };
+
+  const hasAnyPrescriptionValue = (prescription: ConditioningPrescription) =>
+    prescription.reps !== undefined ||
+    prescription.holdSeconds !== undefined ||
+    prescription.sets !== undefined;
+
+  const getMissingPrescriptionLabels = (prescription: ConditioningPrescription) => {
+    const missingLabels: string[] = [];
+
+    if (prescription.reps === undefined) {
+      missingLabels.push("reps");
+    }
+
+    if (prescription.holdSeconds === undefined) {
+      missingLabels.push("hold seconds");
+    }
+
+    if (prescription.sets === undefined) {
+      missingLabels.push("sets");
+    }
+
+    return missingLabels;
   };
 
   const toggleSection = (setter: Dispatch<SetStateAction<boolean>>) => {
@@ -137,18 +161,11 @@ const LessonPlanCreateForm = ({
           />
         </label>
 
-        <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between text-left"
-            onClick={() => toggleSection(setIsStudentsOpen)}
-            aria-expanded={isStudentsOpen}
-          >
-            <p className="text-sm font-medium text-slate-700">Students in this lesson</p>
-            <span className="cursor-pointer text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{isStudentsOpen ? "Collapse" : "Expand"}</span>
-          </button>
-          {isStudentsOpen ? (
-            <>
+        <CollapsiblePanel
+          header={<p className="text-sm font-medium text-slate-700">Students in this lesson</p>}
+          isOpen={isStudentsOpen}
+          onToggle={() => toggleSection(setIsStudentsOpen)}
+        >
               <p className="text-xs text-slate-500">Select students for a targeted lesson. Leave none selected to assign to the whole class.</p>
               <div className="grid gap-2">
                 {classId ? (
@@ -184,27 +201,20 @@ const LessonPlanCreateForm = ({
                   </p>
                 )}
               </div>
-            </>
-          ) : null}
-        </div>
+        </CollapsiblePanel>
 
-        <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between text-left"
-            onClick={() => toggleSection(setIsConditioningOpen)}
-            aria-expanded={isConditioningOpen}
-          >
-            <p className="text-sm font-medium text-slate-700">Conditioning blocks</p>
-            <span className="cursor-pointer text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{isConditioningOpen ? "Collapse" : "Expand"}</span>
-          </button>
-          {isConditioningOpen ? (
-            <>
-              <p className="text-xs text-slate-500">Set reps, hold seconds, and/or sets for each selected exercise.</p>
+        <CollapsiblePanel
+          header={<p className="text-sm font-medium text-slate-700">Conditioning blocks</p>}
+          isOpen={isConditioningOpen}
+          onToggle={() => toggleSection(setIsConditioningOpen)}
+        >
+              <p className="text-xs text-slate-500">Set reps, seconds to hold, and/or sets for each selected exercise.</p>
               <div className="grid max-h-128 gap-2 overflow-y-auto pr-1">
                 {conditioningExercises.map((item) => {
                   const isSelected = selectedConditioningIds.includes(item.id);
                   const currentPrescription = conditioningRepsById[item.id] ?? {};
+                  const hasAnyValue = hasAnyPrescriptionValue(currentPrescription);
+                  const missingLabels = getMissingPrescriptionLabels(currentPrescription);
 
                   return (
                     <label
@@ -229,7 +239,7 @@ const LessonPlanCreateForm = ({
                               if (event.target.checked) {
                                 return {
                                   ...current,
-                                  [item.id]: current[item.id] ?? { reps: 8 },
+                                  [item.id]: current[item.id] ?? {},
                                 };
                               }
 
@@ -243,6 +253,7 @@ const LessonPlanCreateForm = ({
                       </div>
 
                       {isSelected ? (
+                        <>
                         <div className="mt-3 grid gap-2 sm:grid-cols-3">
                           <label className="space-y-1">
                             <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Reps</span>
@@ -266,7 +277,7 @@ const LessonPlanCreateForm = ({
                                   };
                                 });
                               }}
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-teal-600"
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-teal-600 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-300"
                               aria-label={`${item.title} reps`}
                               placeholder="e.g. 8"
                             />
@@ -294,7 +305,7 @@ const LessonPlanCreateForm = ({
                                   };
                                 });
                               }}
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-teal-600"
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-teal-600 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-300"
                               aria-label={`${item.title} hold seconds`}
                               placeholder="e.g. 30"
                             />
@@ -322,34 +333,35 @@ const LessonPlanCreateForm = ({
                                   };
                                 });
                               }}
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition focus:border-teal-600"
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-teal-600 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-300"
                               aria-label={`${item.title} sets`}
                               placeholder="e.g. 3"
                             />
                           </label>
                         </div>
+                        {!hasAnyValue ? (
+                          <p className="mt-2 text-xs text-amber-700">Add at least one value to include this exercise in the lesson plan.</p>
+                        ) : missingLabels.length ? (
+                          <p className="mt-2 text-xs text-slate-500">Missing value: {missingLabels.join(", ")}.</p>
+                        ) : (
+                          <p className="mt-2 text-xs text-emerald-700">All prescription fields are set.</p>
+                        )}
+                        </>
                       ) : (
-                        <p className="mt-2 text-xs text-slate-400">Select to add reps.</p>
+                        <p className="mt-2 text-xs text-slate-400">Select to add reps, hold, or sets.</p>
                       )}
                     </label>
                   );
                 })}
               </div>
-            </>
-          ) : null}
-        </div>
+        </CollapsiblePanel>
 
-        <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between text-left"
-            onClick={() => toggleSection(setIsClassSkillsOpen)}
-            aria-expanded={isClassSkillsOpen}
-          >
-            <p className="text-sm font-medium text-slate-700">Skill blocks for whole class</p>
-            <span className="cursor-pointer text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{isClassSkillsOpen ? "Collapse" : "Expand"}</span>
-          </button>
-          {isClassSkillsOpen ? (
+        <CollapsiblePanel
+          header={<p className="text-sm font-medium text-slate-700">Skill blocks for whole class</p>}
+          isOpen={isClassSkillsOpen}
+          onToggle={() => toggleSection(setIsClassSkillsOpen)}
+          contentClassName=""
+        >
             <div className="grid max-h-128 gap-2 overflow-y-auto pr-1">
               {skillExercises.map((item) => (
                 <label
@@ -372,21 +384,14 @@ const LessonPlanCreateForm = ({
                 </label>
               ))}
             </div>
-          ) : null}
-        </div>
+        </CollapsiblePanel>
 
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between text-left"
-            onClick={() => toggleSection(setIsPerStudentSkillsOpen)}
-            aria-expanded={isPerStudentSkillsOpen}
-          >
-            <p className="text-sm font-medium text-slate-700">Skill blocks per student</p>
-            <span className="cursor-pointer text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{isPerStudentSkillsOpen ? "Collapse" : "Expand"}</span>
-          </button>
-          {isPerStudentSkillsOpen ? (
-            <>
+        <CollapsiblePanel
+          header={<p className="text-sm font-medium text-slate-700">Skill blocks per student</p>}
+          isOpen={isPerStudentSkillsOpen}
+          onToggle={() => toggleSection(setIsPerStudentSkillsOpen)}
+          contentClassName="space-y-3"
+        >
               <p className="text-xs text-slate-500">Assign extra or personalized skills to specific students.</p>
               {activeStudentIds.length ? (
                 activeStudentIds.map((studentId) => {
@@ -440,9 +445,7 @@ const LessonPlanCreateForm = ({
                   Select a class with students to assign individual skill blocks.
                 </p>
               )}
-            </>
-          ) : null}
-        </div>
+        </CollapsiblePanel>
 
         <button
           type="submit"
