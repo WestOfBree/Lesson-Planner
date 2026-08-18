@@ -123,9 +123,15 @@ export default function LessonPlanDetailPage() {
     [skillExercises, lessonPlan?.skillIds],
   );
 
+  const lessonPlanStudentIds = lessonPlan?.studentIds ?? [];
+  const lessonPlanConditioningIds = lessonPlan?.conditioningIds ?? [];
+  const lessonPlanConditioningReps = lessonPlan?.conditioningReps ?? {};
+  const lessonPlanSkillIds = lessonPlan?.skillIds ?? [];
+  const lessonPlanPerStudentSkillIds = lessonPlan?.perStudentSkillIds ?? {};
+
   const lessonScopeStudentIds = useMemo(
-    () => (lessonPlan.studentIds.length ? lessonPlan.studentIds : selectedClass?.studentIds ?? []),
-    [lessonPlan.studentIds, selectedClass?.studentIds],
+    () => (lessonPlanStudentIds.length ? lessonPlanStudentIds : selectedClass?.studentIds ?? []),
+    [lessonPlanStudentIds, selectedClass?.studentIds],
   );
 
   const lessonStudents = useMemo(
@@ -135,7 +141,7 @@ export default function LessonPlanDetailPage() {
 
   const sharedConditioningAssignments = useMemo(
     () =>
-      (lessonPlan.conditioningIds ?? [])
+      lessonPlanConditioningIds
         .map((itemId) => {
           const item = conditioningExercises.find((entry) => entry.id === itemId);
 
@@ -145,16 +151,16 @@ export default function LessonPlanDetailPage() {
 
           return {
             id: item.id,
-            label: `${item.title} (${formatConditioningPrescription(lessonPlan.conditioningReps?.[item.id])})`,
+            label: `${item.title} (${formatConditioningPrescription(lessonPlanConditioningReps[item.id])})`,
           };
         })
         .filter((entry): entry is { id: string; label: string } => Boolean(entry)),
-    [lessonPlan.conditioningIds, lessonPlan.conditioningReps, conditioningExercises],
+    [lessonPlanConditioningIds, lessonPlanConditioningReps, conditioningExercises],
   );
 
   const sharedSkillAssignments = useMemo(
     () =>
-      (lessonPlan.skillIds ?? [])
+      lessonPlanSkillIds
         .map((itemId) => {
           const item = skillExercises.find((entry) => entry.id === itemId);
 
@@ -165,13 +171,13 @@ export default function LessonPlanDetailPage() {
           return { id: item.id, title: item.title };
         })
         .filter((entry): entry is { id: string; title: string } => Boolean(entry)),
-    [lessonPlan.skillIds, skillExercises],
+    [lessonPlanSkillIds, skillExercises],
   );
 
   const studentAssignmentRows = useMemo(
     () =>
       lessonStudents.map((student) => {
-        const personalSkillIds = lessonPlan.perStudentSkillIds?.[student.id] ?? [];
+        const personalSkillIds = lessonPlanPerStudentSkillIds[student.id] ?? [];
         const personalSkillTitles = personalSkillIds
           .map((itemId) => skillExercises.find((entry) => entry.id === itemId)?.title)
           .filter((title): title is string => Boolean(title));
@@ -181,7 +187,7 @@ export default function LessonPlanDetailPage() {
           personalSkillTitles,
         };
       }),
-    [lessonStudents, lessonPlan.perStudentSkillIds, skillExercises],
+    [lessonStudents, lessonPlanPerStudentSkillIds, skillExercises],
   );
 
   if (!lessonPlan) {
